@@ -12,13 +12,13 @@ import('../jugador.js').then(m => { ganchos.P = m.P; ganchos.hurtPlayer = m.hurt
 import('../enemigos.js').then(m => { ganchos.enemies = m.enemies; ganchos.damageEnemy = m.damageEnemy; ganchos.pointInMesh = m.pointInMesh; }).catch(() => {});
 import { empujarPiezas } from '../combate/fisica.js';
 import { FIS, GR, seguir, dejar, poseInterp, descForma, volumenForma } from './fisica-adaptador.js';
-import { TIPOS, MAT, mallasDe } from './catalogo.js';
+import { TIPOS, MAT, mallasDe, vistaDe } from './catalogo.js';
 import { golpe as sonGolpe, Radio, clic as sonClic, siseo, cuerda } from './sonido.js';
 import { emitirRuido, eventoHistoria } from './ruido.js';
 import { fragmentar, cristales } from './roturas.js';
 
 const tA = new V3(), tB = new V3(), tC = new V3(), tQ = new THREE.Quaternion(), tQ2 = new THREE.Quaternion(), tM = new THREE.Matrix4(), tM2 = new THREE.Matrix4(), tS = new V3(1, 1, 1);
-export const CFG = { radioSim: 25, radioQuitar: 32, radioVer: 34, lanzar: 1.12 };
+export const CFG = { radioSim: 25, radioQuitar: 32, radioVer: 34, radioModelo: 6, lanzar: 1.12 }; // radioModelo: más lejos, la malla por código (barata)
 
 // ---------- Registro común de interactivos ----------
 // obj: { label, mallas: [], activo(): bool, agarre: { dist(p): m, agarrar(mano), seguir(mano, dt), soltar(mano, lanzar) },
@@ -47,10 +47,16 @@ class Prop {
     this.body = null; this.tr = null; this.estado = 'libre'; this.manos = []; this.vprev = new V3(); this.vcmd = null; this.cd = 0; this.hitCD = 0;
     this.hp = def.hp ?? 0; this.contenedor = o.contenedor || null; this.fake = null; this.fantasma = false; this.lejos = 0;
     this.radioSim = o.radioSim ?? CFG.radioSim;
+    // modelo realista (catalogo.js): al cargar, la malla por código queda invisible como forma de impactos y agarre
+    // (solo a menos de CFG.radioModelo o en la mano; lejos vuelve la malla por código: menos llamadas y triángulos)
+    this.matsCodigo = this.mallas.map(m => m.material); this.conModelo = false;
+    vistaDe(tipo, this.color)?.then(pl => { if (!pl || this.estado === 'roto') return; this.vista = pl.clone(); this.vista.visible = false; this.root.add(this.vista); }).catch(() => {});
     const vol = def.col.reduce((s, c) => s + volumenForma(c), 0); this.densidad = def.masa / Math.max(1e-6, vol);
     this.agarre = { dist: p => this.distA(p), agarrar: m => agarrarProp(this, m), seguir: (m, dt) => seguirProp(this, m, dt), soltar: (m, l) => soltarProp(this, m, l) };
   }
   get masa() { return this.def.masa; }
+  verModelo(on) { if (!this.vista || on === this.conModelo) return; this.conModelo = on; this.vista.visible = on;
+    this.mallas.forEach((m, i) => { if (m !== this.lente) m.material = on ? MAT.oculto : this.matsCodigo[i]; }); }
   activo() { return this.estado !== 'roto' && this.root.visible && (!this.contenedor || this.contenedor.abierto()); }
   centro(o) { const bb = this.mallas[0].geometry.boundingBox; return this.root.localToWorld(bb.getCenter(o)); }
   // distancia de un punto del mundo a la caja del objeto (0 si está dentro)
@@ -222,6 +228,7 @@ export function actualizarObjetos(dt, jugador) {
     if (pr.estado === 'roto') continue;
     pr.cd -= dt; pr.hitCD -= dt;
     const pos = pr.root.getWorldPosition(tC), d = pos.distanceTo(pj);
+    pr.verModelo(d < CFG.radioModelo || pr.estado === 'sostenido');
     if (pr.estado === 'guardado') continue;
     if (pr.estado !== 'sostenido') pr.root.visible = d < CFG.radioVer;
     // cuerpos solo cerca: se crean dormidos al acercarse y se quitan lejos y en reposo

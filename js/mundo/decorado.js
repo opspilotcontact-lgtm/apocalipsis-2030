@@ -207,7 +207,7 @@ export function casaDave() {
     bx(mesa, 1.3, .04, .85, M.madMesa, 0, .74, 0, { s: .8 }); for (const [a, b] of [[-.58, -.35], [.58, -.35], [-.58, .35], [.58, .35]]) bx(mesa, .05, .72, .05, M.madMesa, a, .36, b);
     bx(mesa, 1.0, .006, .5, M.mantel, 0, .763, 0, { s: .5 });
     addCollider(21.95, 23.25, 82.27, 83.13, .76); supf(22.6, .77, 82.7, 1.25, .8);
-    for (const [sx, sz, r] of [[-.33, -.72, 0], [.33, -.72, 0], [-.33, .72, Math.PI], [.33, .72, Math.PI]]) { const s = grupo(22.6 + sx, 0, 82.7 + sz, r); silla(s, 0xe8d8b8); }
+    for (const [sx, sz, r] of [[-.33, -.72, 0], [.33, -.72, 0], [-.33, .72, Math.PI], [.33, .72, Math.PI]]) { const s = grupo(22.6 + sx, 0, 82.7 + sz, r); silla(s, 0xe8d8b8); cambiar(s, 'painted_wooden_chair_01'); }
     // perchero junto a la puerta con abrigos y zapatos
     bx(raiz, .9, .06, .03, M.madMesa, 21.85, 1.68, zi0 + .02); for (let i = 0; i < 4; i++) ci(raiz, .012, .08, M.metalV, 21.5 + i * .23, 1.66, zi0 + .07, { rx: Math.PI / 2, c: 0x2a2a2a });
     rb(raiz, .38, .85, .14, M.tela, 21.6, 1.2, zi0 + .12, { c: 0x2a3a5a }); rb(raiz, .34, .75, .13, M.tela, 22.05, 1.26, zi0 + .12, { c: 0x7a3020 });
@@ -223,17 +223,17 @@ export function casaDave() {
     rb(sofa, .42, .4, .14, M.tela, -1.0, .76, .06, { rx: -.3, rz: .2, c: 0xd8a040 }); rb(sofa, .4, .38, .14, M.tela, 1.0, .76, .06, { rx: -.3, rz: -.15, c: 0x3a6a7a });
     rb(sofa, .9, .04, .5, M.tela, .3, .6, -.05, { rz: .05, c: 0xa04838 }); // manta
     for (const sx of [-1.35, 1.35]) for (const sz of [-.35, .35]) ci(sofa, .025, .1, M.metalV, sx, .05, sz, { c: 0x2a2a2a });
-    addCollider(16, 19, 88.45, zi1, .45);
+    addCollider(16, 19, 88.45, zi1, .45); cambiar(sofa, 'Sofa_01', Math.PI);
     // mesa baja con revistero
     const mb = grupo(17.5, 0, 86.6);
     bx(mb, 1.2, .05, .66, M.madMesa, 0, .42, 0, { s: .8 }); bx(mb, 1.1, .02, .56, M.madMesa, 0, .14, 0); for (const [a, b] of [[-.55, -.28], [.55, -.28], [-.55, .28], [.55, .28]]) bx(mb, .045, .42, .045, M.madMesa, a, .21, b);
     for (let i = 0; i < 3; i++) bx(mb, .3, .012, .22, M.pintado, -.3 + i * .05, .16 + i * .012, rnd(-.1, .1), { ry: rnd(-.3, .3), c: [0xc83030, 0x2a5a9a, 0xe8e0c8][i] });
-    addCollider(16.85, 18.15, 86.28, 86.92, .45); supf(17.5, .445, 86.6, 1.15, .6);
+    addCollider(16.85, 18.15, 86.28, 86.92, .45); supf(17.5, .445, 86.6, 1.15, .6); cambiar(mb, 'modern_coffee_table_01', Math.PI / 2);
     // sillón (mirando al este)
     const so = grupo(15.1, 0, 86.3, Math.PI / 2);
     bx(so, .86, .3, .8, M.tela, 0, .27, 0, { c: 0x4a6a3a }); rb(so, .7, .14, .6, M.tela, 0, .48, .02, { c: 0x557a44 }); rb(so, .86, .6, .2, M.tela, 0, .72, -.32, { c: 0x4a6a3a, rx: .1 });
     for (const sx of [-1, 1]) rb(so, .16, .52, .8, M.tela, sx * .37, .42, 0, { c: 0x4a6a3a }); for (const sx of [-.35, .35]) for (const sz of [-.33, .33]) ci(so, .025, .12, M.madMesa, sx, .06, sz);
-    addCollider(14.65, 15.55, 85.85, 86.75, .45);
+    addCollider(14.65, 15.55, 85.85, 86.75, .45); cambiar(so, 'GreenChair_01');
     // mueble de la tele + marco de la tele (la pantalla la pone la historia)
     const mt = grupo(17.5, 0, 80.3);
     bx(mt, 2.2, .5, .45, M.mueble, 0, .3, 0, { s: .8 }); bx(mt, 2.2, .05, .45, M.pintado, 0, .025, 0, { c: 0x1a1612 });
@@ -260,6 +260,26 @@ export function casaDave() {
     es(raiz, .09, M.brillo, 18.6, .125, 85.9, { c: 0xd02a2a }); for (let i = 0; i < 5; i++) bx(raiz, .07, .07, .07, M.brillo, 16.4 + rnd(-.2, .2), .07 + (i > 2 ? .07 : 0), 85.8 + rnd(-.15, .15), { ry: rnd(0, 1.5), c: [0xe0c020, 0x2a7ad0, 0x30b040, 0xe05020, 0xa040c0][i] });
     rb(raiz, .2, .07, .1, M.brillo, 17.9, .07, 85.5, { ry: .5, c: 0x2a60e0 }); for (const dx of [-.07, .07]) for (const dz of [-.05, .05]) ci(raiz, .02, .02, M.goma, 17.9 + dx, .035, 85.5 + dz, { rx: Math.PI / 2 });
   });
+}
+// ---------- Modelos realistas en el decorado (Poly Haven CC0, assets/props) ----------
+// cambiar(grupo, id, giro): al construir se apunta; modelosCasa() (antes de hornear) carga el .glb y, si llega,
+// quita las piezas por código del grupo y pone el modelo encajado en su caja (las colisiones no se tocan).
+// Sus mallas se marcan estáticas: hornear() fusiona las copias que comparten material (4 sillas = 1 llamada).
+const cambios = [];
+function cambiar(g, id, ry = 0) { cambios.push({ g, id, ry, cap: B.cap, zona: B.zona }); }
+function aFloat(geo) { for (const k of Object.keys(geo.attributes)) { const a = geo.attributes[k]; if (a.array instanceof Float32Array && !a.isInterleavedBufferAttribute) continue;
+  const n = a.count, s = a.itemSize, f = new Float32Array(n * s); for (let i = 0; i < n; i++) for (let j = 0; j < s; j++) f[i * s + j] = a.getComponent ? a.getComponent(i, j) : [a.getX, a.getY, a.getZ, a.getW][j].call(a, i);
+  geo.setAttribute(k, new THREE.BufferAttribute(f, s)); } }
+export async function modelosCasa() {
+  const { cargarProp, encajarEn, SIN_MODELOS } = await import('../interaccion/catalogo.js'); if (SIN_MODELOS) return;
+  const ids = [...new Set(cambios.map(c => c.id))], esc = new Map(await Promise.all(ids.map(async id => [id, await cargarProp(id)])));
+  for (const e of esc.values()) e?.traverse(o => { if (o.isMesh) aFloat(o.geometry); });
+  const caja = new THREE.Box3(), b = new THREE.Box3();
+  for (const c of cambios) { const e = esc.get(c.id); if (!e) continue;
+    caja.makeEmpty(); for (const m of c.g.children) if (m.isMesh) { m.geometry.boundingBox || m.geometry.computeBoundingBox(); m.updateMatrix(); caja.union(b.copy(m.geometry.boundingBox).applyMatrix4(m.matrix)); }
+    for (const m of [...c.g.children]) if (m.isMesh) { m.removeFromParent(); m.geometry.dispose(); }
+    const v = encajarEn(e.clone(), caja, [0, c.ry, 0]); c.g.add(v);
+    v.traverse(o => { if (!o.isMesh) return; o.castShadow = false; o.receiveShadow = true; o.userData.static = true; o.userData.shoot = true; o.userData.cap = c.cap; o.userData.zona = c.zona; }); }
 }
 function silla(g, c) { bx(g, .42, .04, .42, M.madMesa, 0, .45, 0); for (const [a, b] of [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]]) bx(g, .035, .45, .035, M.madMesa, a, .225, b); for (const a of [-.18, .18]) bx(g, .035, .5, .035, M.madMesa, a, .72, -.18); for (let i = 0; i < 3; i++) bx(g, .36, .05, .02, M.madMesa, 0, .6 + i * .13, -.18); rb(g, .38, .04, .38, M.tela, 0, .485, .01, { c }); }
 function planta(x, z, s = 1) {

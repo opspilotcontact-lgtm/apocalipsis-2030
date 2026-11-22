@@ -17,6 +17,31 @@ Autor: Poly Haven (polyhaven.com) y sus artistas. Licencia: CC0 1.0.
 - `polyhaven/textures/worn_tile_floor/` — https://polyhaven.com/a/worn_tile_floor — CC0
 - `polyhaven/textures/rough_wood/` — https://polyhaven.com/a/rough_wood — CC0
 
+### Modelos 3D (gltf 1K; descargados 2026-11-22, bloque D) → `assets/props/<id>.glb`
+- `polyhaven/models/wine_bottles_01/` — https://polyhaven.com/a/wine_bottles_01 — CC0
+- `polyhaven/models/russian_food_cans_01/` — https://polyhaven.com/a/russian_food_cans_01 — CC0
+- `polyhaven/models/tea_set_01/` — https://polyhaven.com/a/tea_set_01 — CC0
+- `polyhaven/models/cardboard_box_01/` — https://polyhaven.com/a/cardboard_box_01 — CC0
+- `polyhaven/models/binder_notebook/` — https://polyhaven.com/a/binder_notebook — CC0
+- `polyhaven/models/painted_wooden_chair_01/` — https://polyhaven.com/a/painted_wooden_chair_01 — CC0
+- `polyhaven/models/combination_wrench/` — https://polyhaven.com/a/combination_wrench — CC0
+- `polyhaven/models/cross_pein_hammer/` — https://polyhaven.com/a/cross_pein_hammer — CC0
+- `polyhaven/models/vintage_flashlight/` — https://polyhaven.com/a/vintage_flashlight — CC0
+- `polyhaven/models/boombox/` — https://polyhaven.com/a/boombox — CC0
+- `polyhaven/models/wooden_crate_01/` — https://polyhaven.com/a/wooden_crate_01 — CC0
+- `polyhaven/models/television_02/` — https://polyhaven.com/a/television_02 — CC0
+- `polyhaven/models/medical_box/` — https://polyhaven.com/a/medical_box — CC0
+- `polyhaven/models/ammo_box/` — https://polyhaven.com/a/ammo_box — CC0
+- `polyhaven/models/korean_fire_extinguisher_01/` — https://polyhaven.com/a/korean_fire_extinguisher_01 — CC0
+- `polyhaven/models/propane_tank/` — https://polyhaven.com/a/propane_tank — CC0
+- `polyhaven/models/medical_tape/` — https://polyhaven.com/a/medical_tape — CC0
+- `polyhaven/models/portable_cassette_player/` — https://polyhaven.com/a/portable_cassette_player — CC0
+- `polyhaven/models/GreenChair_01/` — https://polyhaven.com/a/GreenChair_01 — CC0
+- `polyhaven/models/Sofa_01/` — https://polyhaven.com/a/Sofa_01 — CC0
+- `polyhaven/models/modern_coffee_table_01/` — https://polyhaven.com/a/modern_coffee_table_01 — CC0
+- `polyhaven/models/vintage_electric_kettle/` — https://polyhaven.com/a/vintage_electric_kettle — CC0
+  (`vintage_electric_kettle` descargado pero sin usar todavía)
+
 ### HDRIs (1K .hdr)
 - `polyhaven/hdri/dikhololo_night_1k.hdr` — https://polyhaven.com/a/dikhololo_night — CC0
 - `polyhaven/hdri/venice_sunset_1k.hdr` — https://polyhaven.com/a/venice_sunset — CC0

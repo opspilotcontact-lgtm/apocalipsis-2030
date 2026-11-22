@@ -2,7 +2,7 @@
 // Escala real en metros. Norte = -Z. Las piezas de "calma" solo existen antes del ataque; las de "caos", después.
 import { THREE, V3, rnd, M, std, glow, block, cyl, flat, pieza, crate, en, B, capas, fuenteLuz, canvasPlane, textDraw, toTex, cv2d, canvasTex, rbox, cylG, luzExtra, addCollider, colliders } from '../nucleo.js';
 import { makeRobot, staticPose, PAL, instancia } from '../cuerpos.js';
-import { casaDave, labMike, manzana, fachadaDetalle, coche as cocheProc, superficies, tiendaHank, baseDetalle, banderaMat, hojas } from './decorado.js';
+import { casaDave, modelosCasa, labMike, manzana, fachadaDetalle, coche as cocheProc, superficies, tiendaHank, baseDetalle, banderaMat, hojas } from './decorado.js';
 import { construirAtmosfera, clima, pulsoRey } from './atmosfera.js';
 
 // ---------- Puntos de la historia: [x, z, yaw] (yaw del jugador: 0 = mirando al norte) ----------
@@ -109,7 +109,7 @@ export async function construirTierra() {
   base();
   // halos: un Points por capa
   for (const cap of ['tierra', 'caos']) { if (!halos[cap].length) continue; const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(halos[cap], 3)); const p = new THREE.Points(g, cap === 'caos' ? haloFuegoMat : haloMat); p.renderOrder = 5; capas[cap].add(p); }
-  await Promise.all([modelosTierra()]);
+  await Promise.all([modelosTierra(), modelosCasa().catch(e => console.warn('[decorado] modelos de la casa', e))]);
   // atmósfera: viento en árboles/cables/banderas/ropa, lluvia, vida ambiental; ganchos de la historia
   construirAtmosfera({ banderaMat, vegetacion: [hoja, hoja2, hojas], cables: [M.cable] });
   W.clima = clima; W.pulsoRey = pulsoRey;

@@ -133,3 +133,80 @@ export function mallasDe(tipo, v) {
   if (!r) { r = TIPOS[tipo].mallas(v).map(p => ({ mat: p.mat, geo: armar(p.piezas) })); cache.set(k, r); }
   return r;
 }
+
+// ---------- Modelos realistas (Poly Haven, CC0) ----------
+// `modelo` opcional: assets/props/<id>.glb (KTX2 + meshopt). Se carga en diferido y, al llegar, la malla por código
+// se queda invisible (sigue siendo la forma de balas/agarre y el respaldo si el .glb falla). El modelo se encaja
+// DENTRO de la caja de la malla por código (= la forma física), centrado y apoyado en su base.
+// nodos: nombre de nodo por variante (sin nodos, toda la escena) · rot: giro [x,y,z] en orden YXZ antes de encajar
+const MODELOS = {
+  botella: { id: 'wine_bottles_01', nodos: ['wine_bottles_01_bordeaux', 'wine_bottles_01_burgundy', 'wine_bottles_01_alsace'] },
+  lata: { id: 'russian_food_cans_01', nodos: ['russian_food_cans_01_can_cond', 'russian_food_cans_01_can_fish', 'russian_food_cans_01_can_cond'] },
+  taza: { id: 'tea_set_01', nodos: ['tea_set_01_cup_small_01', 'tea_set_01_cup_small_02'] },
+  plato: { id: 'tea_set_01', nodos: ['tea_set_01_plate_large_circular_03'] },
+  caja: { id: 'cardboard_box_01', rot: [0, Math.PI / 2, 0] },
+  libro: { id: 'binder_notebook', nodos: ['binder_notebook_closed'], rot: [0, Math.PI / 2, 0] },
+  silla: { id: 'painted_wooden_chair_01', rot: [0, Math.PI, 0] },
+  llave: { id: 'combination_wrench' },
+  martillo: { id: 'cross_pein_hammer', rot: [-X, 0, 0] },
+  linterna: { id: 'vintage_flashlight', rot: [0, Math.PI, 0] },
+  radio: { id: 'boombox' },
+  cajaMadera: { id: 'wooden_crate_01' },
+  monitor: { id: 'television_02' },
+  botiquin: { id: 'medical_box' },
+  venda: { id: 'medical_tape' },
+  municion: { id: 'ammo_box', rot: [0, X, 0] },
+  cinta: { id: 'portable_cassette_player', rot: [-X, X, 0] },
+  extintor: { id: 'korean_fire_extinguisher_01', rot: [0, Math.PI, 0] },
+  bombona: { id: 'propane_tank' }
+};
+export const SIN_MODELOS = typeof location !== 'undefined' && /[?&]sinModelos/.test(location.search); // comparar llamadas/fps con lo de antes
+if (!SIN_MODELOS) for (const k in MODELOS) TIPOS[k].modelo = MODELOS[k];
+MAT.oculto = new THREE.MeshBasicMaterial({ visible: false }); // la malla por código cuando ya hay modelo
+
+const glbs = new Map(); // id → Promise<escena | null>
+// el cargador vive en combate/actor.js (KTX2 + meshopt); se importa en diferido para no arrastrar el combate aquí
+export function cargarProp(id) {
+  let p = glbs.get(id);
+  if (!p) { p = import('../combate/actor.js').then(m => m.cargarGLB(`assets/props/${id}.glb`)).then(g => { simplificarMats(g.scene); return g.scene; })
+    .catch(e => { console.warn('[props] sin modelo', id, e?.message || e); return null; }); glbs.set(id, p); }
+  return p;
+}
+// sin transmisión ni barniz (cuestan una pasada extra en Quest): Physical → Standard; el vidrio, transparente
+function simplificarMats(raiz) {
+  raiz.traverse(o => { if (!o.isMesh) return; const m = o.material; if (!m?.isMeshPhysicalMaterial) return;
+    const s = new THREE.MeshStandardMaterial();
+    for (const k of ['name', 'color', 'map', 'normalMap', 'normalScale', 'roughness', 'roughnessMap', 'metalness', 'metalnessMap', 'aoMap', 'emissive', 'emissiveMap', 'emissiveIntensity', 'alphaMap', 'side', 'opacity', 'transparent', 'alphaTest'])
+      if (m[k] !== undefined) s[k] = m[k]?.isColor || m[k]?.isVector2 ? m[k].clone() : m[k];
+    if (m.transmission > 0) { s.transparent = true; s.opacity = Math.min(s.opacity, .55); s.depthWrite = false; s.roughness = Math.min(s.roughness, .15); }
+    o.material = s; m.dispose(); });
+}
+const _b = new THREE.Box3(), _b2 = new THREE.Box3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+// pone `obj` (girado por rot) dentro de la caja `caja`: escala uniforme (cabe entera), centrado en x/z y apoyado
+// en el fondo (o centrado también en y si `centrarY`). Devuelve un grupo listo para colgar.
+export function encajarEn(obj, caja, rot = [0, 0, 0], centrarY = false) {
+  const g = new THREE.Group(), r = new THREE.Group(); r.rotation.set(rot[0], rot[1], rot[2], 'YXZ'); r.add(obj); g.add(r);
+  g.updateMatrixWorld(true); _b.setFromObject(r, true); _b.getSize(_v); caja.getSize(_v2);
+  const s = Math.min(_v2.x / Math.max(_v.x, 1e-4), _v2.y / Math.max(_v.y, 1e-4), _v2.z / Math.max(_v.z, 1e-4)); r.scale.setScalar(s);
+  g.updateMatrixWorld(true); _b.setFromObject(r, true); caja.getCenter(_v2); _b.getCenter(_v);
+  r.position.set(_v2.x - _v.x, centrarY ? _v2.y - _v.y : caja.min.y - _b.min.y, _v2.z - _v.z);
+  return g;
+}
+const vistas = new Map(); // tipo|variante → Promise<plantilla | null>
+// plantilla del modelo ya encajada en la forma del tipo (se clona por objeto: geometría y materiales compartidos)
+export function vistaDe(tipo, v) {
+  const def = TIPOS[tipo], mo = def.modelo; if (!mo) return null;
+  const k = tipo + '|' + v; let p = vistas.get(k);
+  if (!p) {
+    p = cargarProp(mo.id).then(esc => {
+      if (!esc) return null; const nodo = mo.nodos ? mo.nodos[Math.max(0, def.var.indexOf(v)) % mo.nodos.length] : null;
+      const src = nodo ? esc.getObjectByName(nodo) : esc; if (!src) { console.warn('[props] nodo no encontrado', nodo); return null; }
+      const o = src.clone(); o.position.set(0, 0, 0);
+      _b2.makeEmpty(); for (const { mat, geo } of mallasDe(tipo, v)) if (mat !== 'luz') _b2.union(geo.boundingBox);
+      const pl = encajarEn(o, _b2.clone(), mo.rot, !!def.herramienta);
+      pl.traverse(m => { if (m.isMesh) { m.castShadow = !!def.sombra; m.receiveShadow = true; m.raycast = () => {}; } });
+      return pl;
+    }); vistas.set(k, p);
+  }
+  return p;
+}
