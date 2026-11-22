@@ -11,14 +11,18 @@ import { npcIA, actualizarNpcIA } from './npcIA.js';
 import { guia, actualizarGuia, montarOpcion } from './guia.js';
 import { musica, actualizarMusica } from './musica.js';
 import { avatar, actualizarAvatar } from './avatar.js';
+import { variabilidad, construirVariabilidad, actualizarVariabilidad } from './variabilidad.js';
+import { minijuegos, construirMinijuegos, actualizarMinijuegos } from './minijuegos.js';
 
-export const juego = { ecos, camaras, linterna, actividades, npcIA, guia, musica, avatar };
+export const juego = { ecos, camaras, linterna, actividades, npcIA, guia, musica, avatar, variabilidad, minijuegos };
 const paso = (n, f) => { try { f(); } catch (e) { if (!paso[n]) { paso[n] = 1; console.warn('[juego] ' + n, e); } } };
 // main.js: después de construirInteraccion (el panel de Comodidad ya existe) y antes de hornear
 export function construirJuego() {
   paso('actividades', construirActividades);
   paso('linterna', () => linterna.dar());
   paso('opcion', montarOpcion);
+  paso('variabilidad', construirVariabilidad); // semilla, botín, coleccionables
+  paso('minijuegos', construirMinijuegos);     // antes de hornear: la puerta de la valla parte el tramo fijo
 }
 // main.js: una vez por fotograma, justo antes de renderizar
 export function actualizarJuego(dt) {
@@ -32,5 +36,7 @@ export function actualizarJuego(dt) {
   paso('linterna', () => actualizarLinterna(dt));
   paso('actividades', () => actualizarActividades(dt));
   paso('guia', () => actualizarGuia(dt));
+  paso('variabilidad', () => actualizarVariabilidad(dt));
+  paso('minijuegos', () => actualizarMinijuegos(dt));
 }
 if (typeof window !== 'undefined') window.__juego = juego;

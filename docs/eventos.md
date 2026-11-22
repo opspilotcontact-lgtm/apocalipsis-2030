@@ -96,3 +96,33 @@ Un punto de entrada: `js/juego/index.js` → `construirJuego()` (main.js, tras `
 - **IA de PNJ** (`juego.npcIA`, `npcIA.js`): `crear(id, { pos, yaw, aspecto, robot })` · `adoptar(id[, cuerpo])` (sin cuerpo = el PNJ de `npcs.js`; o un ActorGLB) · `rutina(id, puntos, { vel, pausa, gestos, bucle })` · `seguir(id, { dist, vel })` · `huir(id, { radio, oido, refugio })` · `reaccionar(id, on, { radio })` · `ayudar(id, { dano, cadencia, alcance, arma:'pistola'|'piedra', seguir })` · `gesto(id, tipo)` · `parar(id)` · `quitar(id)`.
 - **Guía visual** (`juego.guia`, `guia.js`): `resaltar(idPUNTOS|[x,z]|[x,y,z]|V3|Object3D, nivel 'ambar'|'cian'|'rojo'|'cinta'|1|2, o)` → asa · `cinta('lab.trasera' | pos, { ancho, alto, ry })` · `quitar(asa)` · `limpiar()` · `pista({ objetivo, nivel, linea, t1 = 60, t2 = 120, alDecir })` (al empezar un paso: a t1 brillo, a t2 subtítulo de Dave) · `progreso()` (reinicia el reloj). Opción `G.opciones.guiaClasica` (rombo; botón en el panel Comodidad, apagada por defecto).
 - **Música** (`juego.musica`, `musica.js`): pads procedurales calma/tensión/combate según robots cercanos y la detección. `forzar(estado|null)` · `zonaSegura(on)` · `volumen(0..1)` · `estado`.
+
+### Variabilidad (`juego.variabilidad`, `variabilidad.js`)
+Semilla por partida en `localStorage['apoc2030.variabilidad']` (empezar el prólogo = partida nueva y nueva semilla; reanudar = la misma). Decide: botín extra de cajones/taquillas (vendas, latas, botiquín, coleccionables; munición como mucho 1 por partida), 2-3 sucesos de calle por capítulo nocturno (`c1`, `c2`, `c3`), variantes de ronda de `guardias` y de enemigos con `ruta` (puntos ±1,2 m, sentido, velocidad, pausas), clima ±0,15 alrededor del objetivo del guion (sin lluvia si el guion no la pide), vecinos asomados a ventanas y la colocación de coleccionables.
+API: `estado()` · `forzar('superviviente'|'saqueadores'|'perro'|'cocheArdiendo'|'radioCasa'|'robotArrastra'|'bici')` (a 6 m del jugador) · `coger(i)` · `rehacer()` · `run` (`col.foto/nota`, `perro`, `lucia`, `minijuegos`) · `azar(clave)` (generador reproducible).
+
+| Evento | Datos | Cuándo |
+|---|---|---|
+| `calle_superviviente` | `{ salvado }` | Tumbas al robot que acorrala a un superviviente (o te vas sin ayudar) |
+| `calle_saqueadores` | `{ huyeron: true }` | Dos saqueadores que se pelean por un coche huyen al verte o al oír un disparo |
+| `perro_alimentado` · `perro_aviso` | — · `{ dist }` | Le acercas una lata a la perra (Trufa): te sigue entre capítulos y ladra si hay un robot a < 14 m |
+| `coche_explota` | `{ dist }` | Un coche ardiendo explota a los ~6-11 s de acercarte a < 12 m (chasquidos de aviso) |
+| `radio_casa` | — | Te acercas a < 7 m de una radio que suena dentro de una casa |
+| `robot_arrastra` | `{ interrumpido }` | Un R-7 arrastra un cuerpo; si te acercas o disparas, lo suelta y ataca |
+| `bici_nota` | — | Coges la nota de la bici del crío |
+| `coleccionable` | `{ tipo: 'foto'\|'nota', id, titulo, n, total }` | Coges una foto del pueblo (8) o una nota de superviviente (9); contador en la muñeca (VR) / Tab (PC) |
+| `vecino_ventana` | `{ dist }` | Miras > 1 s a un vecino asomado y se esconde |
+
+### Minijuegos (`juego.minijuegos`, `minijuegos.js`)
+Galería de tiro detrás de la tienda de Hank (campana en (-24,5, -48,8); 6 botellas/latas, 40 s; las balas gastadas se devuelven) · dardos delante de la fachada oeste de la casa (13, 82,6; raya en x ≈ 10,6; dardos físicos) · «la canción de Lucía» en el piano de casa (partitura en el atril y tecla siguiente marcada; la 1.ª vez: `memoria.recordar('dave','cancion_lucia',2,{afecto:.25})`) · HORSE con el chaval (pizarra junto a la canasta; usa la pelota y el marcador de `actividades.js`) · puerta de servicio en la valla oeste de la base (115, -36,5): caja de alarma con 3 cables, el bueno lo dice la nota (nunca el rojo); uno malo abre igual pero salta la sirena (ruido 40 m) · emisoras ocultas en el dial de las radios (2 de 3 por partida: anuncio de Lázaro, entrevista a Mike de 2028, estación de números).
+API: `estado()` · `empezarGaleria()` · `empezarHorse()` · `recogerDardos()` · `cortar('rojo'|'azul'|'amarillo')` · `tocar(midi)`.
+Ganchos para la historia: comentarios de Hank/Lucía/Nico vía estos eventos (hoy hay líneas propias solo si la historia no está hablando).
+
+| Evento | Datos | Cuándo |
+|---|---|---|
+| `galeria_inicio` · `galeria_fin` | — · `{ puntos, total: 6, limpio }` | Campana / fin de la ronda (bonus 1 punto cada 5 s sobrantes) |
+| `dardos_ronda` · `dardo_diana` | `{ puntos, dardos: ['T20','D5','0'] }` · — | Tras los 3 dardos / diana de 50 |
+| `piano_melodia` | `{ cancion: 'lucia', primera }` | Tocas la canción completa |
+| `horse_fin` | `{ gana: 'jugador'\|'chaval', letrasJugador, letrasChaval }` | Alguien completa HORSE |
+| `valla_cortada` · `valla_alarma` | `{ id: 'base_oeste', alarma }` · `{ id, cable }` | Se abre la puerta de servicio / cable equivocado |
+| `radio_oculta` | `{ id: 'lazaro'\|'mike'\|'numeros' }` | Primera vez que sintonizas una emisora oculta |
