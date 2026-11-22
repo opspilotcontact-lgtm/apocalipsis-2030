@@ -4,6 +4,7 @@ import { THREE, V3, rnd, M, std, glow, block, cyl, flat, pieza, crate, en, B, ca
 import { makeRobot, staticPose, PAL, instancia } from '../cuerpos.js';
 import { casaDave, modelosCasa, labMike, manzana, fachadaDetalle, coche as cocheProc, superficies, tiendaHank, baseDetalle, banderaMat, hojas } from './decorado.js';
 import { construirAtmosfera, clima, pulsoRey } from './atmosfera.js';
+import { edificioVariado, calleViva, FACHADAS_ON } from './fachadas.js';
 
 // ---------- Puntos de la historia: [x, z, yaw] (yaw del jugador: 0 = mirando al norte) ----------
 export const PUNTOS = {
@@ -61,7 +62,8 @@ function arbol(x, z, s = 1) {
   const c = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6 * s, 0), Math.random() < .5 ? hoja : hoja2); c.scale.y = 1.25; pieza(c, x, 3.2 * s, z, { shoot: false });
   const c2 = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1 * s, 0), hoja); pieza(c2, x + .5 * s, 4.3 * s, z - .3 * s, { shoot: false });
 }
-function edificio(x, z, w, d, h, mat, cara) { block(x, z, w, d, h, mat, { s: 12 }); block(x, z, w + .4, d + .4, .4, M.concrete, { y: h, collide: false, s: 3 }); if (cara) fachadaDetalle(x, z, w, d, h, cara); }
+function edificio(x, z, w, d, h, mat, cara) { if (cara && FACHADAS_ON) return edificioVariado(x, z, w, d, h, cara); // fachadas variadas (misma colisión); ?fachadasViejas = la de antes
+  block(x, z, w, d, h, mat, { s: 12 }); block(x, z, w + .4, d + .4, .4, M.concrete, { y: h, collide: false, s: 3 }); if (cara) fachadaDetalle(x, z, w, d, h, cara); }
 function cocheAparcado(x, z, ry, mi) { cocheProc(x, z, ry, { color: [0x7a1e1e, 0x1e3a6a, 0xb8b8b0][mi % 3] }); }
 function cocheQuemado(x, z, ry = 0) { cocheProc(x, z, ry, { quemado: true }); }
 function fuego(x, z, s = 1) {
@@ -103,7 +105,7 @@ export async function construirTierra() {
     const r = 175 + rnd(-10, 15), x = 43 + Math.cos(a) * r * 1.05, z = -35 + Math.sin(a) * r, h = rnd(18, 42);
     const rr = rnd(35, 55), g = new THREE.ConeGeometry(rr, h, 7, 3); { const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * rr * 6.3 / 9, uv.getY(i) * h / 9); } const m = new THREE.Mesh(g, M.cerro); m.scale.z = rnd(.6, 1); pieza(m, x, h / 2 - 2, z, { shoot: false, cast: false });
   }
-  calles(); pueblo(); casas(); casaDave(); tienda(); carreteraNorte(); recinto(); detalleCalle(); manzana();
+  calles(); pueblo(); casas(); casaDave(); tienda(); carreteraNorte(); recinto(); detalleCalle(); manzana(); calleViva();
   W.superficies = superficies;
   en('tierra', 0, -112, () => { laboratorio(); labMike(); });
   base();

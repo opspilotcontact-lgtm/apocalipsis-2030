@@ -605,6 +605,14 @@
       "fuente": "generado por el propio codigo del juego (las fotos de ladrillo/enlucido son Poly Haven CC0)",
       "licencia": "propia + CC0",
       "comercial": true
+    },
+    {
+      "path": "assets/texturas/interiores_tiendas.ktx2",
+      "tipo": "atlas 2048 ETC1S (4x4 celdas de 512): 10 interiores de tienda + 2 saqueados para el interior mapping de los escaparates, 2 capas delanteras, grietas y 10 rotulos; tools/atlas_interiores.py + toktx",
+      "uso": "js/mundo/fachadas.js (matInterior, matRotulo)",
+      "fuente": "fotos generadas con Gemini (gemini.google.com, 23-nov-2026; capturas 2x2 recortadas) + capas, grietas y rotulos dibujados con Pillow",
+      "licencia": "imagen generada por IA (Google Gemini): revisar condiciones antes de publicar; el resto propio",
+      "comercial": false
     }
   ],
   "derivados_mixamo": {
