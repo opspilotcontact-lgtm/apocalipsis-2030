@@ -17,7 +17,7 @@
 import { THREE, V3, G, clamp, scene, camera, canvasPlane, wrapText, aplicarHora, setCapa } from '../nucleo.js';
 import { fundido, sfx, ambiente, engineSet } from '../fx.js';
 import { ui, say } from '../ui.js';
-import { P, WEAPONS, playerFeet, teleport, usable, quitarUsable, limpiarUsables, darArma, attachWeapon } from '../jugador.js';
+import { P, WEAPONS, playerFeet, teleport, usable, usables, quitarUsable, limpiarUsables, darArma, attachWeapon } from '../jugador.js';
 import { car, colocarCoche, exitCar, viaje, iniciarViaje, levantarse } from '../vehiculos.js';
 import { spawn, enemies, limpiarEnemigos, vivos, guardia, foco, limpiarSigilo, deteccion } from '../enemigos.js';
 import { makeHuman, animRig, poseHerido } from '../cuerpos.js';
@@ -28,7 +28,7 @@ import { FICHAS } from '../personajes/fichas.js';
 
 const tA = new V3(), tB = new V3(), tC = new V3();
 // quién mueve la boca con cada nombre de subtítulo
-const HABLA = { MIKE: 'mike', SARAH: 'sarah', HANK: 'hank', JOHN: 'john', SOLDADO: 'soldado1', GUARDIA: 'guarda', VARELA: 'varela', 'NÚÑEZ': 'soldado2', RATA: 'rata', CHISPA: 'chispa', 'EL REY': 'elrey' };
+const HABLA = { MIKE: 'mike', SARAH: 'sarah', HANK: 'hank', JOHN: 'john', SOLDADO: 'soldado1', GUARDIA: 'guarda', VARELA: 'varela', 'NÚÑEZ': 'soldado2', RATA: 'rata', CHISPA: 'chispa', 'EL REY': 'elrey', NICO: 'nico' };
 const punto = k => Array.isArray(k) ? new V3(k[0], 0, k[1]) : k instanceof V3 ? k : P3(k);
 
 // ---------- Marcador del objetivo: columna de luz + rombo ----------
@@ -36,7 +36,17 @@ const marca = new THREE.Group();
 { const col = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, 40, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffcf6a, transparent: true, opacity: .12, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false })); col.position.y = 20; marca.add(col);
   const rombo = new THREE.Mesh(new THREE.OctahedronGeometry(.25), new THREE.MeshBasicMaterial({ color: 0xffcf6a, toneMapped: false })); rombo.position.y = 2.6; rombo.scale.y = 1.5; marca.add(rombo); marca.userData.rombo = rombo; }
 marca.visible = false; scene.add(marca);
-function marcar(p) { if (!p) { marca.visible = false; return; } marca.position.set(p.x, 0, p.z); marca.visible = true; }
+let marcaPos = null;
+const guiaClasica = () => !!G.opciones?.guiaClasica;
+function marcar(p, siempre = false) { if (!p) { marca.visible = false; marcaPos = null; return; } marcaPos = { x: p.x, z: p.z }; marca.position.set(p.x, 0, p.z); marca.visible = siempre || guiaClasica(); }
+// ayuda progresiva: 60 s → resaltado ámbar (gancho guia.resaltar del agente de sistemas; si no existe, se enciende el marcador) · 120 s → Dave da una pista
+const PISTA = { ir: 'Tengo que moverme. Por ahí.', usar: 'Hay algo aquí que puedo coger.', evento: 'Piensa, Dave. Mira alrededor.', mirar: 'Algo me llama la atención por aquí.', subir: 'La pickup. Vamos.', grabacion: 'Esa grabadora parpadea.', sigilo: 'Por delante no. Tiene que haber otra forma de entrar.' };
+function ayuda(dir, p, t) {
+  if (!['ir', 'usar', 'evento', 'mirar', 'subir', 'grabacion', 'sigilo'].includes(p.t)) return;
+  if (t > 60 && !dir.ayuda1) { dir.ayuda1 = true; const g = G.guia || W.guia || window.__guia;
+    if (g?.resaltar) { try { g.resaltar(p.resaltar || p.id || p.nombre || marcaPos); } catch (e) {} } else if (marcaPos) marca.visible = true; }
+  if (t > 120 && !dir.ayuda2) { dir.ayuda2 = true; const txt = typeof p.pista === 'function' ? p.pista(API) : p.pista || PISTA[p.t]; if (txt) dir.cola.push({ n: 'DAVE', t: txt }); }
+}
 
 // ---------- Voces sintetizadas (opcional) ----------
 const VOZ_EXTRA = { RADIO: [1, 1.1], TELE: [1.25, 1.1], SOLDADO: [.85, 1.05], GUARDIA: [.8, 1], 'NÚÑEZ': [.95, 1.1], MILICIANO: [.9, 1.05], SAQUEADOR: [1, 1.1], CINTA: [1.1, 1.0], CONTESTADOR: [1.1, 1.0] };
@@ -94,12 +104,9 @@ function mallaCinta(id, pos) {
 const humanos = [], caidos = [];
 const FRASES_CAIDA = ['¡Vale, vale! ¡Me rindo!', '¡Para! ¡Para!', 'Ah… mi pierna…', '¡No dispares!'];
 function crearHumano(x, z, o = {}) {
-  const e = spawn('r7', x, z, { vel: o.vel || .8, hp: o.hp || 60 });
-  const R = makeHuman(aspecto(o.def || 'saqueador'));
-  R.root.position.copy(e.R.root.position); R.root.rotation.y = e.R.root.rotation.y; e.R.root.removeFromParent(); scene.add(R.root);
-  e.R = R; e.pos = R.root.position; e.S = R.S; e.boot = 1; e.limbHP = {}; e.reach = 1.35; e.humano = o.def || 'saqueador'; e.rinde = !!o.rinde; e.nombre = o.nombre || null;
-  e.atkCD = (o.retraso || 0) + .8;
-  for (const m of R.hit) m.userData.enemy = e;
+  const e = spawn('villano', x, z, { vel: o.vel || .8, hp: o.hp || 60, humano: aspecto(o.def || 'saqueador'), arma: !!o.arma });
+  e.rinde = !!o.rinde; e.nombre = o.nombre || null; e.atkCD = (o.retraso || 0) + .8;
+  if (!e.rinde) { humanos.push(e); return e; }   // el resto muere/cae con el sistema de combate
   let hp = e.hpMax;
   Object.defineProperty(e, 'hp', { configurable: true, get: () => hp, set: v => { if (v <= 0 && e.alive) { hp = .01; e.caido = true; } else hp = v; } });
   humanos.push(e); return e;
@@ -152,19 +159,19 @@ export const director = {
   limpiar(todo) {
     limpiarEnemigos(); limpiarSigilo(); limpiarUsables(); marcar(null); ui.subtitulo(null); ui.objetivo('');
     if (viaje.activo) { viaje.activo = null; engineSet(false); }
-    if (todo) { ocultarTodos(); if (car.occupied) exitCar(true); car.bloqueado = false; P.sentado = null; P.bloqueoMov = false; G.pausaEnemigos = false; for (const k in cintas) cintas[k].visible = false; this.opcionales = []; }
+    if (todo) { ocultarTodos(); if (car.occupied) exitCar(true); car.bloqueado = false; P.sentado = null; P.bloqueoMov = false; G.pausaEnemigos = false; for (const k in cintas) cintas[k].visible = false; this.opcionales = []; this.opcEv = []; }
     humanos.length = 0; for (const c of caidos) c.R.root.removeFromParent(); caidos.length = 0;
     this.cerrarEleccion(); this.cortarLinea(); this.cola = []; this.cinta = null; cinematica(false);
-    this.hablante = null; G.enDialogo = false; callar();
+    this.hablante = null; G.enDialogo = false; callar(); this.congelado = false; G.pausaEnemigos = false;
   },
 
   // ---------- pasos ----------
   irAPaso(i) {
     const pasos = this.cap.pasos; this.pasoIdx = i; this.paso = pasos[i]; this.t = 0; this.hablante = null; G.enDialogo = false; this.cortarLinea(); this.cerrarEleccion();
-    const p = this.paso; if (!p) return this.terminarCap();
+    const p = this.paso; if (!p) return this.terminarCap(); this.ayuda1 = this.ayuda2 = false;
     if (p.si && !p.si(memoria, API)) return this.irAPaso(i + 1);
     if (p.cp) this.cp = { pasoIdx: i, inv: [...P.inv], w: P.w, punto: p.cp.punto, rehacer: p.cp.rehacer };
-    if (p.obj) { ui.objetivo(typeof p.obj === 'function' ? p.obj(API) : p.obj); sfx('objetivo'); }
+    if (p.obj) { const o = typeof p.obj === 'function' ? p.obj(API) : p.obj; ui.objetivo(o); G.objetivoDave = p.dave || o; sfx('objetivo'); }
     const tok = this.token;
     const sig = () => { if (tok === this.token && this.paso === p) this.avanzar(); };
     switch (p.t) {
@@ -180,18 +187,30 @@ export const director = {
       case 'opcional': {
         const pos = typeof p.pos === 'function' ? p.pos : punto(p.a);
         const reg = () => usable({ id: p.id, pos, r: p.r || 1.8, label: p.label, alto: p.alto, mesh: p.mesh ? p.mesh() : null, on: () => { quitarUsable(p.id); this.opcionales = this.opcionales.filter(o => o !== reg); if (p.f) p.f(API, memoria); this.escribir(p.recUsar); } });
-        reg(); (this.opcionales ||= []).push(reg); sig(); break; }
+        reg(); (this.opcionales ||= []).push(reg);
+        // también se cumple si llega su evento (p. ej. el sistema de ecos emite 'eco_visto' { id })
+        if (p.evento) (this.opcEv ||= []).push({ nombre: p.evento, filtro: p.filtro, run: () => { const u = usables.get(p.id); if (u) u.on(); } });
+        if (p.eco) API.eco(p.eco.id, p.eco);
+        sig(); break; }
       case 'cinematica': cinematica(p.on !== false); sig(); break;
       case 'evento': {
         // espera un evento de otro sistema (interacción, combate…) o una condición; con alternativa jugable mientras no exista
-        if (p.a) marcar(punto(p.a));
+        if (p.a) marcar(punto(p.a)); if (p.eco) API.eco(p.eco.id, p.eco);
         if (p.f0) p.f0(API, memoria);
         if (p.alt) { const alt = p.alt, pos = alt.aqui ? () => playerFeet(new V3()).setY(playerFeet(new V3()).y + .9) : alt.pos || punto(alt.a || p.a);
           usable({ id: 'alt-' + p.nombre, pos, r: alt.r || 2, label: alt.label, alto: alt.alto, on: () => { quitarUsable('alt-' + p.nombre); if (alt.f) alt.f(API, memoria); this.evento(p.nombre, { alternativa: true }); } }); }
         break; }
       case 'ir': marcar(p.marca === false ? null : punto(p.a)); break;
-      case 'conducir': marcar(punto(p.a)); break;
-      case 'subir': marcar(car.g.position); break;
+      case 'conducir': marcar(punto(p.a), true); break;
+      case 'subir': marcar(car.g.position, true); break;
+      case 'guardar': {
+        // zona segura: grabadora / diario. Guarda el capítulo y deja aquí el punto de control (sin parar la historia)
+        const pos = p.pos || punto(p.a);
+        usable({ id: 'guardar-' + (p.id || i), pos, r: p.r || 1.8, label: p.label || 'Guardar (grabadora)', alto: p.alto, on: () => {
+          this.cp = { pasoIdx: i + 1, inv: [...P.inv], w: P.w, punto: p.punto || this.cp?.punto, rehacer: p.rehacer };
+          this.guardar(this.capIdx); try { localStorage.setItem('apoc2030.guardado', JSON.stringify({ cap: this.capIdx, paso: i + 1 })); } catch (e) {}
+          sfx('pickup'); say('Partida guardada'); } });
+        sig(); break; }
       case 'usar': {
         const pos = p.pos ? p.pos : punto(p.a);
         usable({ id: p.id, pos, r: p.r || 1.8, label: p.label, mesh: p.mesh ? p.mesh() : null, alCabeza: p.alCabeza, alto: p.alto, on: () => { quitarUsable(p.id); marcar(null); if (p.f) p.f(API, memoria); sig(); } });
@@ -230,6 +249,7 @@ export const director = {
   // muestra una línea y espera a que acabe (tiempo de lectura) o a que el jugador la salte
   decir(n, t) {
     this.cortarLinea(true);
+    if (G.enDialogo && vivos() > 0) G.pausaEnemigos = true; // congelar ya, sin esperar al siguiente fotograma
     ui.subtitulo(n, t); this.hablante = HABLA[n] || null; sfx(n === 'RADIO' || n === 'TELE' || n === 'CINTA' || n === 'CONTESTADOR' ? 'radio' : 'blip'); hablar(n, t);
     return new Promise(res => { this.linea = { t: 0, dur: clamp(1.6 + t.length * .055, 2.4, 8), res }; });
   },
@@ -280,8 +300,9 @@ export const director = {
     this.eventos[nombre] = { t: G.time, datos };
     if (nombre === 'robotCaido' && this.paso?.t === 'oleada' && this.paso.alCaer) this.paso.alCaer(API, vivos());
     for (const w of [...this.esperas]) if (w.nombre === nombre) { this.esperas.splice(this.esperas.indexOf(w), 1); w.res(datos ?? true); }
+    for (const o of [...(this.opcEv || [])]) if (o.nombre === nombre && (!o.filtro || o.filtro(datos || {}))) { this.opcEv.splice(this.opcEv.indexOf(o), 1); o.run(); }
     const p = this.paso;
-    if (p?.t === 'evento' && p.nombre === nombre && !this.pausa) { quitarUsable('alt-' + nombre); marcar(null); if (p.alAcabar) p.alAcabar(API, memoria, datos); this.avanzar(); }
+    if (p?.t === 'evento' && p.nombre === nombre && (!p.filtro || p.filtro(datos || {})) && !this.pausa) { quitarUsable('alt-' + nombre); marcar(null); if (p.alAcabar) p.alAcabar(API, memoria, datos); this.avanzar(); }
     if (nombre === 'descubierto' && p?.escondite && !this.pausa) this.fallo('TE HA ENCONTRADO');
   },
   // promesa que se resuelve con el evento (o tras max segundos con null)
@@ -292,7 +313,7 @@ export const director = {
   // ---------- elección ----------
   abrirEleccion(p) {
     const ops = p.ops.filter(o => !o.si || o.si(memoria, API));
-    G.enDialogo = true; P.bloqueoMov = true;
+    G.enDialogo = true; P.bloqueoMov = true; G.pausaEnemigos = true;
     if (p.pregunta) { ui.subtitulo(p.quien || 'DAVE', p.pregunta); this.hablante = HABLA[p.quien] || null; hablar(p.quien || 'DAVE', p.pregunta); }
     // ancla: delante de la cabeza, algo por debajo de la mirada
     camera.getWorldPosition(tA); camera.getWorldDirection(tB); tB.y = 0; tB.normalize();
@@ -355,6 +376,8 @@ export const director = {
     for (const a of [...anims]) { a.t += dt; const k = Math.min(1, a.t / a.dur); a.fn(k); if (k >= 1) { anims.splice(anims.indexOf(a), 1); a.res(); } }
     // enemigos humanos que caen y caídos que se quedan en el suelo
     for (const e of [...humanos]) if (e.caido && e.alive) { neutralizar(e); humanos.splice(humanos.indexOf(e), 1); }
+    // nunca hay ataques durante una conversación o una elección: los enemigos se congelan (y el guion puede congelarlos a mano)
+    G.pausaEnemigos = !!(this.congelado || this.elec || (G.enDialogo && vivos() > 0));
     for (const c of caidos) { c.t += dt; if (c.sentado) poseHerido(c.R, G.time); else animRig(c.R, dt, { spd: 0, down: Math.min(1, c.t * 2.2) }); }
     if (this.cap?.actualizar && !this.pausa) this.cap.actualizar(dt, API);
     // línea en pantalla (flujo) y cintas (cuando el flujo calla)
@@ -373,6 +396,7 @@ export const director = {
     }
     if (this.pausa || !this.paso) return;
     const p = this.paso; this.t += dt;
+    if (!this.pausa && this.paso) ayuda(this, this.paso, this.t);
     if (marca.visible) { marca.userData.rombo.rotation.y += dt * 2; marca.userData.rombo.position.y = 2.6 + Math.sin(G.time * 2) * .15; }
     if (p.t === 'subir' && marca.visible) marca.position.set(car.g.position.x, 0, car.g.position.z);
     const pf = playerFeet(tA);
@@ -388,7 +412,10 @@ export const director = {
         if (this.t >= p.s) { limpiarEnemigos(); this.avanzar(); } break; }
       case 'sigilo': if (cerca(p.a, p.r || 2)) { deteccion.activa = false; if (!p.mantener) limpiarSigilo(); this.avanzar(); } break;
       case 'esperar': if (this.t >= p.s) this.avanzar(); break;
-      case 'evento': if ((p.cond && p.cond(API, memoria)) || (p.max && this.t > p.max)) this.evento(p.nombre, { auto: true }); break;
+      case 'evento':
+        if (p.lugar && cerca(p.lugar.a, p.lugar.r || 1.8)) { if (p.lugar.f) p.lugar.f(API, memoria); this.evento(p.nombre, p.lugar.datos || { lugar: true }); }
+        else if ((p.cond && p.cond(API, memoria)) || (p.max && this.t > p.max)) this.evento(p.nombre, p.datosAuto || { auto: true });
+        break;
       case 'mirar': {
         if (this.mirando(p.a, p.ang)) this.mirT += dt; else this.mirT = Math.max(0, this.mirT - dt * 2);
         if (this.mirT >= (p.s ?? .5) || this.t > (p.max || 30)) { marcar(null); this.avanzar(); } break; }
@@ -452,6 +479,19 @@ export const API = {
   clima: (tipo, i = 1, dur) => { try { (W.clima || G.clima || window.__clima)?.(tipo, i, dur); } catch (e) { console.warn('[historia] clima', e); } },
   pulsoRey: (o = {}) => { try { (W.pulsoRey || G.pulsoRey || window.__pulsoRey)?.(o); } catch (e) { console.warn('[historia] pulsoRey', e); } },
   evento: (n, d) => director.evento(n, d),
+  // congela a los enemigos mientras dura algo montado (además de la congelación automática en diálogos)
+  congelar: on => { director.congelado = !!on; },
+  tpXZ: (x, z, yaw = 0) => teleport(x, z, yaw),
+  get vehiculo() { return car; },
+  // ── sistemas del agente de sistemas (opcionales; docs/eventos.md §5) ──
+  // ecos del pasado: el sistema dibuja el eco y emite 'eco_visto' { id } al verlo
+  eco: (id, o = {}) => { try { const E = W.ecos || G.ecos || window.__ecos; if (E?.registrar) E.registrar(id, { pos: o.pos, radio: o.radio || 2.5, escena: o.escena || id }); } catch (e) { console.warn('[historia] eco', e); } },
+  // cámaras de seguridad: el visor emite 'camara_vista' { id }
+  camara: (id) => { try { (W.camaras || G.camaras || window.__camaras)?.ver?.(id); } catch (e) { console.warn('[historia] camara', e); } },
+  // IA de NPC: rutina / seguir / huir
+  npcIA: (accion, id, ...a) => { try { (W.npcIA || G.npcIA || window.__npcIA)?.[accion]?.(id, ...a); } catch (e) { console.warn('[historia] npcIA', e); } },
+  // actividades laterales (baloncesto…), perro, linterna al hombro…
+  lateral: (id, datos) => { try { (W.lateral || G.lateral || window.__lateral)?.(id, datos); } catch (e) { console.warn('[historia] lateral', e); } },
   esperarEvento: (n, max) => director.esperarEvento(n, max),
   tele(t) { W.tele?.set(t ? { t, bg: '#101826' } : {}); },
   pantallas(lineas, alerta = false) { for (const s of W.pantallas) s.set({ l: lineas, alerta }); },

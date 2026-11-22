@@ -2,7 +2,7 @@
   "generado": "2026-11-22",
   "pipeline": "tools/README.md",
   "cargar": "GLTFLoader + MeshoptDecoder + KTX2Loader(transcoder https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/); *_webp.glb solo necesita MeshoptDecoder",
-  "estado": "MUESTRA de control de calidad: solo Dave y R7_partes finalizados. Hank, Unidad01, El_Rey, Coloso y Unidad01_partes estan horneados en assets_src/derivados/*_crudo.glb pero NO finalizados.",
+  "estado": "Producción 22-nov: Dave/Hank animados, Mike estático (listo para Mixamo), R7_partes, X56D, biblioteca de 41 clips. Pendientes: Unidad01, El_Rey, Coloso (horneados en assets_src/derivados/*_crudo.glb), Unidad01_partes.",
   "assets": [
     {
       "path": "assets/personajes/Dave.glb",
@@ -133,6 +133,62 @@
         "Pieza_Pie_R": "mixamorig:RightFoot"
       },
       "anclas": []
+    },
+    {
+      "path": "assets/personajes/Hank_animado.glb",
+      "fallback": "assets/personajes/Hank_animado_webp.glb",
+      "tipo": "personaje riggeado Mixamo",
+      "tris": 22000,
+      "altura_m": 1.78,
+      "skin": true,
+      "joints": 41,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 2048",
+        "metallicRoughness": "KTX2 ETC1S 2048",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "animaciones": {
+        "Idle": {},
+        "Walk": {
+          "en_sitio": true,
+          "velocidad_raiz_mps": 1.6166
+        },
+        "HitHead": {}
+      },
+      "anclas": []
+    },
+    {
+      "path": "assets/personajes/Mike.glb",
+      "fallback": "assets/personajes/Mike_webp.glb",
+      "tipo": "personaje estático A-pose (TRELLIS → voxel remesh 3 mm → 22k + bake)",
+      "tris": 22000,
+      "altura_m": 1.75,
+      "skin": false,
+      "animaciones": [],
+      "anclas": [],
+      "mixamo": "assets_src/derivados/Mike_mixamo_ligero.fbx"
+    },
+    {
+      "path": "assets/armas/X56D.glb",
+      "fallback": "assets/armas/X56D_webp.glb",
+      "tipo": "arma (TRELLIS → 10k + bake 1024)",
+      "tris": 9994,
+      "longitud_m": 0.85,
+      "skin": false,
+      "animaciones": [],
+      "orientacion": "cañón hacia -Z, Y arriba, empuñadura en el origen",
+      "anclas": {
+        "Empunadura": [
+          0,
+          0,
+          0
+        ],
+        "Boca": [
+          0,
+          0.149,
+          -0.592
+        ]
+      }
     }
   ],
   "derivados_mixamo": {
@@ -143,5 +199,12 @@
       "assets_src/derivados/El_Rey_mixamo.fbx",
       "assets_src/derivados/Coloso_mixamo.fbx"
     ]
+  },
+  "biblioteca_clips": {
+    "carpeta": "assets/personajes/anim/",
+    "indice": "assets/personajes/anim/README.md",
+    "clips": 41,
+    "esqueleto": "mixamorig (41 huesos, rig de Dave)",
+    "fps": 30
   }
 }

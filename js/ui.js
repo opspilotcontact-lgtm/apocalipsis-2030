@@ -1,7 +1,7 @@
 // Interfaz: HUD de PC (DOM) y paneles en 3D para VR (subtítulos, tarjetas de capítulo, muñeca).
 import { THREE, V3, G, $, mix, camera, scene, canvasPlane, wrapText } from './nucleo.js';
 
-const COL = { DAVE: '#7ff3ff', MIKE: '#ffb468', SARAH: '#ffa0c0', HANK: '#c8f07a', JOHN: '#d8c89a', SOLDADO: '#ff8a6a', GUARDIA: '#ff8a6a', RADIO: '#9aa7b8', TELE: '#9aa7b8', LOCUTORA: '#9aa7b8', 'UNIDAD 01': '#29e6ff', VARELA: '#e8a060', 'NÚÑEZ': '#ff8a6a', RATA: '#d9b26a', CHISPA: '#e0c890', MILICIANO: '#ff8a6a', 'MIKE · CINTA': '#ffcf9a', 'MIKE · CONTESTADOR': '#ffcf9a', 'EL REY': '#ff3b3b', 'RADIO · JOHN': '#d8c89a', ORION: '#9fd8ff' };
+const COL = { DAVE: '#7ff3ff', MIKE: '#ffb468', SARAH: '#ffa0c0', HANK: '#c8f07a', JOHN: '#d8c89a', SOLDADO: '#ff8a6a', GUARDIA: '#ff8a6a', RADIO: '#9aa7b8', TELE: '#9aa7b8', LOCUTORA: '#9aa7b8', 'UNIDAD 01': '#29e6ff', VARELA: '#e8a060', 'NÚÑEZ': '#ff8a6a', RATA: '#d9b26a', CHISPA: '#e0c890', MILICIANO: '#ff8a6a', 'MIKE · CINTA': '#ffcf9a', 'MIKE · CONTESTADOR': '#ffcf9a', 'EL REY': '#ff3b3b', 'RADIO · JOHN': '#d8c89a', ORION: '#9fd8ff', NICO: '#9fe0a0' };
 export const colorDe = n => COL[n] || '#e9eef5';
 
 // ---------- Paneles VR que siguen la mirada con suavidad ----------

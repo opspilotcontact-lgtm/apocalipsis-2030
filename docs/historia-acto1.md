@@ -19,6 +19,25 @@ Motivos para pelear contra humanos: defender a Hank (cap. 4), defender el labora
 
 ---
 
+## Revisión 3 · misiones jugadas, no narradas (22-nov)
+
+Regla: **lo que se puede encontrar o hacer no se cuenta**. Nunca hay diálogo bloqueante con enemigos activos (se congelan); el coche se queda en el cordón (bajas al llegar) y cada paso con dependencia de otro sistema tiene alternativa jugable.
+
+| Cap. | Misión | Objetivos del jugador | Opcional / exploración | Ecos y pistas |
+|---|---|---|---|---|
+| Prólogo | El casco | Explorar el lab, ponerse el casco (dos manos) | Cinta 1 en la mesa | — |
+| 1 · Cena | Volver a casa | Mirar dibujo y foto, **reproducir el contestador**, elegir qué contar | Pizarra de tiza, piano, cuaderno (interacción) | El contestador es la pista («no te fíes de nada que lleve mi cara») |
+| 2 · Calle | Llegar al lab | Despedirse (o no), piedra, primer robot, conducir; **bajas en el cordón** | **Nico** en la cancha del parque: hablar, mandarle a casa (robots llegan: protegerle), baloncesto si el sistema lo activa; linterna en el cajón de la entrada | Ola de despertar |
+| 3 · Laboratorio | Encontrar a Mike | Sigilo por la valla; **elegir entrada**: cristal de la puerta trasera (ruido → el cordón lo comenta) o **rejilla** al este (silenciosa); esconderse en la taquilla o distraer lanzando objetos; luego pelear | Cinta 2; cajón de Mike | **Eco obligatorio**: R-01 coge el casco y se toca la nuca delante de Mike (sustituye la explicación de Mike moribundo) |
+| 4 · Tienda | Salvar a Hank y salir | Salvarle, chaleco + recarga, decidir con Rata, **escoltar a Hank** hasta la pickup bajo ataque | Munición en la caja registradora, botiquín en la taquilla de Hank | **Eco opcional** en la cerradura forzada: Rata planea volver por el callejón → desbloquea la respuesta «Os esperaba» (sin pelea) |
+| 5 · La banda | Descubrir qué pasó | Mirar la placa de John, **revisar las cámaras** del lab (elegir la 3; rebobinar a las 22:10), mirar la pizarra, abrir el cajón (pistola + nota), reducir a la milicia, decidir sobre Varela | Cinta 3 | Las dos grabaciones las encuentra el jugador; John ya no narra |
+| 6 · Base | Robar la ORION-4 | Sigilo, **dar la señal por el walkie**, arrancar la cabina entre oleadas, defender la rampa, decidir sobre Varela | — | **Eco opcional** de John por radio («LZR-0001… lo traigo mañana») → réplica en la cabina |
+| Epílogo | — | — | — | La voz de Mike en la radio |
+
+Exposición convertida en juego: explicación de Mike sobre R-01 → eco; «La cámara tres lo grabó todo» y «Hay otra grabación» → el jugador navega las cámaras; «Se está grabando…» → se lee en pantalla; la ruta de Rata → eco; el pasado de John → eco.
+
+---
+
 ## Revisión 2 · diseño VR y giros de guion (22-nov)
 
 Integra `docs/diseno-vr.md` y `docs/backlog-vr.md`. Los momentos físicos que dependen de otros sistemas esperan **eventos** (lista en `docs/eventos.md`) y tienen alternativa jugable mientras tanto.

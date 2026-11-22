@@ -56,3 +56,43 @@ Desde el guion: `D.clima(...)`, `D.pulsoRey(...)`, `D.evento(...)`, `await D.esp
 - `W.pulsoRey({ ola = true, origen = [0, -139], radio = true })` → `D.pulsoRey(...)`. Con `ola`, los ojos rojos de los robots dormidos del pueblo se encienden en cadena desde `origen` (~38 m/s), las farolas exteriores se apagan por sectores y halos y conos bajan al 18 %. Con `radio`, chirrido digital con un pulso grave. Al cambiar de hora o capítulo (`aplicarHora`) se restaura todo.
 - Consola: `__clima('lluvia', 1)` · `__pulsoRey({ origen: [0, 40] })`.
 - Superficies libres para objetos: `W.superficies = [{ zona, x, y, z, w, d, ry }]` (encimeras, mesas, estantes, carros). La interacción puede colocar props encima.
+
+## 5. Revisión 3 · ganchos del agente de sistemas (todos opcionales, con alternativa)
+
+| Gancho (historia llama) | Dónde se busca | Uso en el guion |
+|---|---|---|
+| `D.eco(id, { pos, radio, escena })` → `ecos.registrar(id, …)` | `W.ecos` · `G.ecos` · `window.__ecos` | `eco_casco` (cap. 3, vitrina, **obligatorio**), `eco_saqueadores` (cap. 4, puerta de la tienda, opcional), `eco_john` (cap. 6, radio junto a los barracones (131.5, -36.5), opcional) |
+| `D.camara(id)` → `camaras.ver(id)` | `W.camaras` · `G.camaras` · `window.__camaras` | cap. 5: abre el visor en la cámara 1 al llegar a la consola |
+| `D.npcIA(accion, id, …)` → `npcIA[accion](id, …)` | `W.npcIA` · `G.npcIA` · `window.__npcIA` | `rutina('nico','baloncesto')`, `huir('nico', [-36, 80])` |
+| `D.lateral(id, datos)` | `W.lateral` · `G.lateral` · `window.__lateral` | `lateral('baloncesto', { npc: 'nico', pos: [-38, 40] })` (cap. 2) |
+
+| Evento (sistemas emiten) | Datos esperados | Dónde |
+|---|---|---|
+| `eco_visto` | `{ id: 'eco_casco' \| 'eco_saqueadores' \| 'eco_john' }` | el de la vitrina hace avanzar; los otros dos cuentan como el objeto opcional |
+| `camara_vista` | `{ id: 3 }` y luego `{ id: '3-2210' }` (el registro de la cámara 3 rebobinado a las 22:10) | cap. 5, consola de Mike |
+
+Paso `evento` admite ahora `filtro: datos => bool`, `lugar: { a, r, datos, f }` (llegar a un sitio también lo cumple: la rejilla del lab), `eco: {…}` y `alAcabar(D, m, datos)`. Paso `opcional` admite `evento` + `filtro` + `eco`.
+Los enemigos se **congelan solos** mientras hay diálogo bloqueante o elección con enemigos vivos (`G.pausaEnemigos` lo gestiona el director cada fotograma; el guion usa `D.congelar(on)`).
+
+## Sistemas de juego (`js/juego/*`)
+
+Un punto de entrada: `js/juego/index.js` → `construirJuego()` (main.js, tras `construirInteraccion`) y `actualizarJuego(dt)` (main.js, justo antes de `renderer.render`). Todo cuelga de `juego` (y de `window.__juego` en consola). Desde la historia, con encadenamiento opcional: `import('../juego/index.js').then(({ juego }) => juego.ecos?.activo('base_john', true))`.
+
+### Eventos que emiten (vía `director.evento`)
+| Evento | Datos | Cuándo |
+|---|---|---|
+| `eco_visto` | `{ id }` | Al terminar de reproducirse un eco |
+| `camara_vista` | `{ id: 1..4, grabacion }` | Al cambiar de cámara (o encenderse el monitor) |
+| `canasta` | `{ quien: 'jugador'\|'chaval', triple }` | Canasta en el parque |
+| `triples_fin` | `{ puntos }` | Fin del minijuego de triples (60 s) |
+| `encuentro_gato` | — | El gato salta del coche (te acercas a < 4,5 m) |
+| `encuentro_ventana` | — | La superviviente te lanza el botiquín (tras tumbar al robot) |
+
+### APIs
+- **Ecos** (`juego.ecos`, `ecos.js`): `registrar(id, { pos:[x,z], radio, duracion, titulo, activo, actores:{ clave:{ nombre, robot, o, color } }, guion:[{ t, actor, accion:'aparecer'|'caminar'|'gesto'|'linea'|'sonido'|'desaparecer', datos }] })` · `activo(id, bool)` · `reproducir(id)` · `parar()` · `cerca()` · `actual` · `lista`. Datos: aparecer `{ pos, yaw }`, caminar `{ a:[x,z], vel }`, gesto `{ tipo:'telefono'|'coger'|'senalar'|'manos'|'correr', dur, objeto:'casco'|'telefono' }`, linea `{ texto }`, sonido `{ sfx }`. Entrada: VR clic del stick izquierdo o las dos manos con grip junto a la cabeza · PC **Q**. De serie: `lab_casco` (vitrina, activo), `calle_familia` (cruce este, activo), `base_john` (hangar, **inactivo**: lo enciende la historia).
+- **Cámaras** (`juego.camaras`, `camaras.js`): `ver(id 1..4, grabacion?)` · `grabacion(on)` (cámara 3, robo del casco por R-01 en bucle, holograma solo visible en la cámara, capa 5) · `actual` · `lista`. Monitor derecho de la mesa de Mike + botonera 1·2·3·4·▶ (VR: dedo · PC: E/clic). Render 256×144 a 10 fps solo mientras se mira.
+- **Linterna** (`juego.linterna`, `linterna.js`): el jugador empieza con una en el hombro (VR: mano al hombro + grip; gatillo junto al hombro; PC: **L**). `bateria` 0..1 (≈4 min encendida, parpadea < 30 %, recarga apagada o agitándola en VR) · `recargar(v)` · `dar()`.
+- **Actividades** (`juego.actividades`, `actividades.js`): `activar('baloncesto'|'gato'|'ventana', on)` · `triples()` · `estado()` · `CANASTA` ([-35, 46.5]). El chaval (`npcIA` id `chaval`) recoge rebotes, pasa o tira; en PC la pelota lanzada mirando al aro se corrige a parábola (ayuda de puntería).
+- **IA de PNJ** (`juego.npcIA`, `npcIA.js`): `crear(id, { pos, yaw, aspecto, robot })` · `adoptar(id[, cuerpo])` (sin cuerpo = el PNJ de `npcs.js`; o un ActorGLB) · `rutina(id, puntos, { vel, pausa, gestos, bucle })` · `seguir(id, { dist, vel })` · `huir(id, { radio, oido, refugio })` · `reaccionar(id, on, { radio })` · `ayudar(id, { dano, cadencia, alcance, arma:'pistola'|'piedra', seguir })` · `gesto(id, tipo)` · `parar(id)` · `quitar(id)`.
+- **Guía visual** (`juego.guia`, `guia.js`): `resaltar(idPUNTOS|[x,z]|[x,y,z]|V3|Object3D, nivel 'ambar'|'cian'|'rojo'|'cinta'|1|2, o)` → asa · `cinta('lab.trasera' | pos, { ancho, alto, ry })` · `quitar(asa)` · `limpiar()` · `pista({ objetivo, nivel, linea, t1 = 60, t2 = 120, alDecir })` (al empezar un paso: a t1 brillo, a t2 subtítulo de Dave) · `progreso()` (reinicia el reloj). Opción `G.opciones.guiaClasica` (rombo; botón en el panel Comodidad, apagada por defecto).
+- **Música** (`juego.musica`, `musica.js`): pads procedurales calma/tensión/combate según robots cercanos y la detección. `forzar(estado|null)` · `zonaSegura(on)` · `volumen(0..1)` · `estado`.

@@ -13,6 +13,7 @@ import { director } from './historia/director.js';
 import { ACTO1 } from './historia/acto1.js';
 import { construirInteraccion, antesJugador, actualizarInteraccion, entradaPC } from './interaccion/index.js';
 import { memoria } from './personajes/memoria.js';
+import { construirJuego, actualizarJuego } from './juego/index.js';
 
 const note = m => { const el = $('#vrNote'); if (el) el.textContent = m; };
 note('Construyendo el mundo…');
@@ -20,6 +21,7 @@ note('Construyendo el mundo…');
 for (const n of ['Hank', 'Unidad01', 'El_Rey', 'Casco_Neural']) modelo(n).catch(() => {});
 await construirTierra();
 await construirInteraccion(); // objetos, muebles, cristales, pickup por dentro (antes de hornear: lo fijo se fusiona)
+construirJuego(); // ecos, cámaras, linterna, actividades, guía, música (js/juego)
 construirEspacio();
 hornear();
 aplicarHora('atardecer');
@@ -110,5 +112,6 @@ renderer.setAnimationLoop(() => {
   sky.position.copy(G.CAM);
   const w = WEAPONS[P.w];
   actualizarUI(dt, { hp: Math.max(0, Math.ceil(P.hp)), w: car.occupied ? 'Al volante' : P.sentado ? 'Sentado' : w.name, ammo: car.occupied ? Math.round(Math.abs(car.speed) * 3.6) + ' km/h' : w.melee ? '∞' : P.reloading > 0 ? 'Recargando…' : `${P.ammo[w.id]} / ${w.mag}`, det: deteccion.activa || deteccion.v > 0 ? deteccion.v : 0, visto: deteccion.visto });
+  actualizarJuego(dt); // sistemas de juego (js/juego): también hace el render a textura de las cámaras
   renderer.render(scene, camera);
 });

@@ -42,7 +42,7 @@ function gt(cmd, ...extra) {
 
 gt('dedup');
 gt('weld');
-gt('prune');
+gt('prune', '--keep-leaves', 'true'); // conserva empties de anclaje (Empunadura, Boca)
 gt('resize', '--width', TAM, '--height', TAM);
 if (TAM_NORMAL) gt('resize', '--pattern', '"*normal*"', '--width', TAM_NORMAL, '--height', TAM_NORMAL);
 const base = actual;

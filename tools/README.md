@@ -106,3 +106,24 @@ node tools/finalizar.mjs assets_src/derivados/Dave_animado_crudo.glb assets/pers
   de `rusty_metal_02` (normal 0.35) sobre el color plano.
 - La normal UASTC 2048 pesa ~4.2 MB (ruido de alta frecuencia; zstd apenas comprime). Si pesa demasiado: normal a 1024.
 - Blender no importa KTX2/meshopt: las comparativas se renderizan con el `*_crudo.glb` (misma geometría y texturas).
+
+## Producción 22-nov (tarde)
+```bash
+# Hank animado (mismo arreglo de redirección)
+"$B" -b --factory-startup --python tools/montar_personaje.py -- --rig assets_src/mixamo/Hank_rig.fbx --nombre Hank --altura 1.78 --tex-dir assets_src/derivados/Hank_tex --referencia assets_src/derivados/Hank_crudo.glb --anim Idle=assets_src/mixamo/anims/Breathing_Idle.fbx --anim Walk=assets_src/mixamo/anims/Walking.fbx --anim HitHead=assets_src/mixamo/anims/Head_Hit.fbx --en-sitio Walk --salida assets_src/derivados/Hank_animado_crudo.glb --render-dir assets_src/derivados/renders
+node tools/finalizar.mjs assets_src/derivados/Hank_animado_crudo.glb assets/personajes/Hank_animado.glb --tex ktx2 --tam 2048 --tam-normal 1024 --fallback-webp
+# biblioteca: un GLB por clip (41 = 40 FBX + Left_Strafe_Walking espejado)
+"$B" -b --factory-startup --python tools/biblioteca_anim.py -- --rig assets_src/mixamo/Dave_rig.fbx --dir assets_src/mixamo/anims --categoria todas --clips <lista> --en-sitio Walking,Running,Walking_Backwards,Right_Strafe_Walking,Left_Strafe_Walking,Crouched_Walking,Injured_Walk,Mutant_Walking,Zombie_Walk --raiz Getting_Up,Getting_Up_v1,Dying,Dying_v1,Dying_v2,Falling_Back_Death,Falling_Back_Death_v1 --espejo Left_Strafe_Walking=Right_Strafe_Walking --por-clip --salida assets_src/derivados/anim_crudo
+for f in assets_src/derivados/anim_crudo/*.glb; do gltf-transform resample $f tmp.glb; gltf-transform meshopt tmp.glb assets/personajes/anim/$(basename $f) --level medium; done
+# verificación con three r170 real (npm i three@0.170.0 en una carpeta temporal y copiar ahí el script)
+node verificar_clips_three.mjs <raiz del repo>
+# Mike (TRELLIS no-manifold: el collapse se atascaba en 63k) y fusil X56D
+"$B" -b --factory-startup --python tools/optimizar_personaje.py -- --entrada assets_src/ia3d/Mike_fix.glb --nombre Mike --altura 1.75 --sin-fbx --uv smart --angulo-uv 66 --remesh 0.003 --extrusion 0.005 --rayo 0.012
+"$B" -b --factory-startup --python tools/fbx_ligero.py -- assets_src/derivados/Mike_crudo.glb assets_src/derivados/Mike_mixamo_ligero.fbx
+"$B" -b --factory-startup --python tools/optimizar_personaje.py -- --entrada assets_src/ia3d/Fusil_X56D.glb --nombre X56D --altura 0.429 --rot-z 180 --tris 10000 --tris-lod 5000 --tex 1024 --tex-lod 512 --uv smart --angulo-uv 66 --remesh 0.0015 --extrusion 0.003 --rayo 0.008 --sin-fbx --sin-render
+"$B" -b --factory-startup --python tools/montar_arma.py -- --entrada assets_src/derivados/X56D_crudo.glb --salida assets_src/derivados/X56D_montado_crudo.glb --empunadura=-0.167,0.160 --boca-z 0.309 --render assets_src/derivados/renders/X56D_anclas.png
+node tools/finalizar.mjs assets_src/derivados/X56D_montado_crudo.glb assets/armas/X56D.glb --tex ktx2 --tam 1024 --fallback-webp
+```
+Trampas nuevas: el importador glTF deja `rotation_mode = QUATERNION` (rotation_euler no hace nada → ahora `--rot-z` usa matrix_world);
+`gltf-transform prune` borraba los empties de anclaje (ahora `--keep-leaves true`); renderizar en Blender clips de OTRO GLB sobre
+un personaje GLB no sirve (cada importación inventa su reposo) → se verifica en three.

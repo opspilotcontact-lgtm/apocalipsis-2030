@@ -83,7 +83,9 @@ def importar_alta(a):
             bpy.data.objects.remove(o, do_unlink=True)
     alta.name = a.nombre + "_alta"
     cb.seleccionar([alta], alta)
-    alta.rotation_euler.rotate_axis('Z', math.radians(a.rot_z))
+    # OJO: el importador glTF deja rotation_mode QUATERNION; rotation_euler se ignoraría
+    from mathutils import Matrix
+    alta.matrix_world = Matrix.Rotation(math.radians(a.rot_z), 4, 'Z') @ alta.matrix_world
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     n = len(alta.data.vertices)
     co = np.empty(n * 3, np.float32)

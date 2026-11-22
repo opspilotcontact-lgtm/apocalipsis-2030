@@ -108,8 +108,12 @@ export const ACTO1 = [
         { npc: 'mike', mira: 'jugador' }, { npc: 'mike', a: [2.2, -138.6], vel: 1.2 },
         ['DAVE', 'Son las nueve, Mike. Si vuelvo a llegar tarde a cenar, Sarah me cambia la cerradura.'],
         { n: 'MIKE', t: 'Ven a ver esto antes. Dos minutos. Te lo prometo.', gesto: ['mike', 'manos'] }] },
+      { t: 'escena', l: [{ n: 'MIKE', t: 'Antes, hazme un favor: pásame el destornillador. El cajón de mi mesa, el que se atasca.', gesto: ['mike', 'senalar'] }] },
+      { t: 'evento', nombre: 'cajon_abierto', a: [6.6, -146.21], obj: 'El cajón de la mesa de Mike', pista: 'El cajón de su mesa. El que siempre se atasca.',
+        alt: { label: 'Abrir el cajón', a: [6.6, -146.21], r: 1.6 } },
+      { t: 'escena', l: [{ n: 'MIKE', t: 'Ese no, el otro... Da igual. Ya que estás, mira la grabadora. O no. Mejor no.', gesto: ['mike', 'encoger'] }] },
       cinta('g1'),
-      { t: 'ir', a: 'lab.vitrina', r: 1.6, obj: 'Acércate a la vitrina del casco' },
+      { t: 'ir', a: 'lab.vitrina', r: 1.6, obj: 'La vitrina del casco', pista: 'Mike está junto a la vitrina. Quiere enseñarme el casco.' },
       { t: 'escena', l: [
         { npc: 'mike', a: [1.3, -141.4], vel: 1 }, { npc: 'mike', mira: [0, 1.1, -142] },
         ['MIKE', 'Casco neural, versión tres. Ocho electrodos y un chip M-7.'],
@@ -127,7 +131,11 @@ export const ACTO1 = [
           l: [{ n: 'MIKE', t: 'Nada que no te vaya a contar cuando funcione. Te lo juro por mamá.', gesto: ['mike', 'nuca'] }, ['DAVE', 'Mamá está viva, Mike.'], ['MIKE', 'Por eso lo juro por ella. Póntelo.']] },
         { k: 'negarse', txt: 'No. Me voy a cenar.', rec: [R_('mike', 'dave_se_resistio', 1, { afecto: -.1 }), R_('dave', 'se_nego_al_casco', 1)],
           l: [{ n: 'MIKE', t: 'Dos minutos, Dave. Y luego te dejo en paz un año entero.', gesto: ['mike', 'manos'] }, ['DAVE', '...Un año entero. Lo apunto.']] }] },
-      { t: 'usar', id: 'casco', label: 'Ponerse el casco', pos: () => OB.casco.getWorldPosition(new V3()), mesh: () => OB.casco, alCabeza: true, dosManos: true, r: 1.8, alto: .9,
+      { t: 'escena', l: [{ n: 'MIKE', t: 'Firma en la pizarra. Consentimiento informado. Es broma... más o menos.', gesto: ['mike', 'senalar'] }] },
+      { t: 'evento', nombre: 'pizarra_escrita', a: [-5.5, -147.4], obj: 'Firma en la pizarra de Mike', pista: 'La pizarra blanca del fondo. Firmo y acabamos.',
+        alt: { label: 'Firmar en la pizarra', a: [-5.5, -147.2], r: 1.8 }, rec: [R_('dave', 'firmo_el_consentimiento', 2)] },
+      { t: 'escena', l: [{ n: 'MIKE', t: 'Precioso. Ahora el casco. Con las dos manos, que pesa.', gesto: ['mike', 'manos'] }] },
+      { t: 'usar', id: 'casco', label: 'Ponerse el casco', pista: 'Con las dos manos. Y a la cabeza.', pos: () => OB.casco.getWorldPosition(new V3()), mesh: () => OB.casco, alCabeza: true, dosManos: true, r: 1.8, alto: .9,
         obj: () => vr() ? 'Coge el casco con LAS DOS MANOS y póntelo en la cabeza' : 'Ponte el casco (E)',
         rec: [R_('dave', 'se_puso_el_casco', 3)],
         f: async D => { D.sfx('escaner'); await D.fundido(.85, 5, 0xffffff); D.pantallas(['> grabar_sujeto --DAVE', 'progreso: 100% ████████', 'copia guardada', 'destino: LÁZARO SYSTEMS', 'ref: LZR-0001'], false); await D.esperar(.4); D.fundido(0, 1.5); } },
@@ -151,6 +159,7 @@ export const ACTO1 = [
         { n: 'MIKE', t: 'Hermanito... tú y yo vamos a ser los reyes del mundo. Una noche más no es nada.', gesto: ['mike', 'manos'], pausa: .5 }] },
       { t: 'ir', a: 'lab.salida', r: 2.5, obj: 'Sal del laboratorio' },
       { t: 'subir', obj: () => vr() ? 'Sube a tu pickup (A junto a la puerta)' : 'Sube a tu pickup (E junto a la puerta)' },
+      { t: 'evento', nombre: 'motor_arrancado', cond: D => !('motor' in D.vehiculo) || !!D.vehiculo.motor, max: 60, obj: 'Gira la llave', pista: 'La llave está puesta. Girarla, Dave.' },
       { t: 'escena', libre: true, l: [{ espera: 2 }, ['RADIO', '...cortes de luz en la zona industrial. La compañía eléctrica pide calma...'], ['RADIO', '...y en deportes...']] },
       { t: 'conducir', a: 'casa.calle', r: 8, obj: 'Vuelve a casa: calle mayor hacia el sur, luego a la derecha' },
       { t: 'fin' }
@@ -181,6 +190,7 @@ export const ACTO1 = [
         { n: 'SARAH', t: 'Un robot bueno. Lo ha escrito ella. Por si había dudas.', pausa: .6 },
         ['SARAH', 'Ha llamado tu hermano. Te ha dejado un mensaje. No lo he escuchado; ya sabes que no me hace gracia.']] },
       cinta('g4', false, { obj: 'Escucha el contestador (junto a la tele)', r: 1.6 }),
+      { t: 'guardar', id: 'diario', label: 'Escribir en el cuaderno (guardar)', pos: new V3(17.15, .5, 86.62), punto: 'casa.puertaDentro' },
       { t: 'mirar', a: [16.6, .75, 80.42], obj: 'Mira la foto de la estantería', marca: false, max: 15, ang: .3 },
       { t: 'escena', l: [
         { npc: 'sarah', a: [21.9, 85], vel: .9 }, { npc: 'sarah', mira: 'jugador' },
@@ -251,7 +261,13 @@ export const ACTO1 = [
       { t: 'fn', f: D => D.bloquearCoche(false) },
       { t: 'subir', obj: 'Sube a la pickup' },
       { t: 'fn', f: D => D.robots(robotsCalle) },
-      { t: 'conducir', a: 'cordon', r: 9, obj: 'Conduce hasta el laboratorio de Mike (al norte por la calle mayor). Atropéllalos si hace falta' },
+      // opcional: Nico, 13 años, tirando a canasta solo en el parque a las 3 de la madrugada
+      { t: 'fn', f: async D => { await D.npc('nico', [-38, 40], Math.PI / 2, { def: 'nico', porte: 'nervioso' }); D.lateral('baloncesto', { npc: 'nico', pos: [-38, 40] }); D.npcIA('rutina', 'nico', 'baloncesto'); } },
+      { t: 'opcional', id: 'nico', label: 'Hablar con el chaval', pos: () => npcs.nico.root.position, r: 2.2, alto: 1.6,
+        f: D => { D.gesto('nico', 'encoger'); D.murmurar([['NICO', 'Mis padres no han vuelto del turno. Si encesto diez seguidas, vuelven. Llevo siete.'], ['DAVE', 'Vete a casa, Nico. Cierra con llave.'], ['NICO', 'En la tienda de armas hay un hombre gritando. Hank. Lleva gritando media hora.']]);
+          D.robots([[-30, 22, { vel: .8 }], [-46, 24, { vel: .8, retraso: 1 }]]); D.npcIA('huir', 'nico', [-36, 80]); D.caminar('nico', [-36, 79], 2.6).then(() => D.ocultar('nico')); },
+        recUsar: [R_('dave', 'ayudo_a_nico', 2), R_('nico', 'dave_le_mando_a_casa', 2, { confianza: .5 })] },
+      { t: 'conducir', a: 'cordon', r: 12, bajar: true, obj: 'Conduce hasta el laboratorio de Mike (al norte). Opcional: hay un chaval solo en la cancha del parque' },
       { t: 'fin' }
     ]
   },
@@ -259,7 +275,7 @@ export const ACTO1 = [
   {
     id: 'c2', sub: 'Capítulo 3', titulo: 'El laboratorio acordonado', nota: 'Laboratorio de Mike · 03:40', hora: 'noche', caos: true, inicio: 'cordon', armas: ['punos', 'piedra'], ambiente: 'viento',
     async prep(D) {
-      ocultarOB(); D.coche('cordon.coche'); D.barreraLab(false); D.clima('lluvia', 1);
+      ocultarOB(); D.coche('cordon.coche'); D.bloquearCoche(true); D.barreraLab(false); D.clima('lluvia', 1);
       await D.npc('varela', D.P['cordon.soldado'], 0, { def: 'varela', mira: true });
       await D.npc('soldado2', [-6.5, -117.2], .3, { def: 'soldado', mira: 'varela' });
       await D.npc('mike', D.P['lab.mikeHerido'], 0, { pose: 'herido' });
@@ -279,29 +295,42 @@ export const ACTO1 = [
         guardias: D => [{ ruta: [[-30, -123], [-30, -156]], vel: 1.15 }, { ruta: [[-19, -153.5], [19, -153.5]], vel: 1.05 }, { ruta: [[30, -123], [30, -152]], vel: 1.2 }],
         focos: D => [{ origen: D.W.focosLab[0], ruta: [[-36, -126], [-36, -150], [-24, -163]], vel: .28 }, { origen: D.W.focosLab[1], ruta: [[36, -126], [36, -152], [22, -163]], vel: .24 }] },
       // la puerta trasera está cerrada: romper la ventana hace ruido y atrae a un R-7
-      { t: 'evento', nombre: 'ventana_rota', a: 'lab.trasera', obj: () => vr() ? 'La puerta está cerrada: rompe la ventana (golpéala con la piedra)' : 'La puerta está cerrada: rompe la ventana',
+      { t: 'evento', nombre: 'ventana_rota', a: 'lab.trasera', obj: 'Entra: rompe el cristal de la puerta trasera (ruidoso) o busca la rejilla de ventilación al este (silencioso)',
+        lugar: { a: [4, -149.4], r: 1.4, datos: { ruta: 'rejilla' }, f: D => { D.say('Arrancas la rejilla y te arrastras dentro'); D.tpXZ(4, -145.6, Math.PI); } },
+        alAcabar: (D, m, d) => m.recordar('dave', 'entro_al_lab_por_' + (d?.ruta === 'rejilla' ? 'la_rejilla' : 'la_ventana'), 1),
         alt: { label: 'Romper la ventana con la piedra', a: 'lab.trasera', r: 2.2, f: D => { D.sfx('snap'); D.G.shake = .2; } }, rec: [R_('dave', 'rompio_la_ventana_del_lab', 1)] },
-      { t: 'escena', libre: true, l: [['RADIO', 'Núñez: ¿Ha oído eso, mi sargento? Ha sonado a cristal.'], ['RADIO', 'Varela: Serán los robots. Quieto en tu puesto, Núñez.']] },
-      { t: 'ir', a: 'lab.dentroTrasera', r: 1.8, obj: 'Entra' },
+      { t: 'escena', libre: true, si: m => m.recuerda('dave', 'entro_al_lab_por_la_ventana'), l: [['RADIO', 'Núñez: ¿Ha oído eso, mi sargento? Ha sonado a cristal.'], ['RADIO', 'Varela: Serán los robots. Quieto en tu puesto, Núñez.']] },
+      { t: 'ir', si: m => m.recuerda('dave', 'entro_al_lab_por_la_ventana'), a: 'lab.dentroTrasera', r: 1.8, obj: 'Entra' },
       { t: 'fn', f: async D => { await D.npc('r7a', [1.5, -132.5], Math.PI, { def: 'r7' }); D.sfx('boot'); D.say('Pasos metálicos'); } },
-      { t: 'evento', nombre: 'escondido', escondite: true, cp: { punto: 'lab.dentroTrasera' }, a: [-10.9, -144.5], obj: () => vr() ? 'Un robot viene hacia aquí: ESCÓNDETE en la taquilla' : 'Un robot viene hacia aquí: escóndete en la taquilla',
-        alt: { label: 'Esconderte en la taquilla', a: [-10.9, -144.5], r: 1.8 } },
+      { t: 'evento', nombre: 'escondido', escondite: true, cp: { punto: 'lab.dentroTrasera' }, a: [-11.25, -143.65], obj: () => vr() ? 'Un robot viene hacia aquí: ESCÓNDETE en la taquilla (o distráelo lanzando algo)' : 'Un robot viene hacia aquí: escóndete en la taquilla',
+        alt: { label: 'Esconderte en la taquilla', a: [-11.25, -143.65], r: 1.8 } },
       { t: 'escena', libre: true, escondite: true, l: [
         { npc: 'r7a', mira: null }, { npc: 'r7a', a: [-5, -140.5], vel: .8, esperar: true, max: 10 },
-        { npc: 'r7a', mira: [-10.9, 1.4, -144.5] }, { espera: 1.2 },
+        { npc: 'r7a', mira: [-11.25, 1.4, -143.65] }, { espera: 1.2 },
         { f: D => D.say(vr() ? 'Tápate la boca con la mano' : 'Contén la respiración (Mayús izq.)') },
         { evento: 'respiracion_contenida', max: 4 }, { espera: 1.5 },
         { npc: 'r7a', mira: null }, { npc: 'r7a', a: [3, -133], vel: .9, esperar: true, max: 10 },
         { f: D => D.ocultar('r7a') }], rec: [R_('dave', 'se_escondio_del_robot', 1)] },
       { t: 'evento', nombre: 'salir_escondite', max: 1.5, obj: 'Sal de la taquilla' },
+      // ECO (obligatorio): los últimos minutos en el laboratorio. El jugador VE cómo R-01 coge el casco.
+      { t: 'evento', nombre: 'eco_visto', filtro: d => !d.id || d.id === 'eco_casco', a: [0, -140.6], eco: { id: 'eco_casco', pos: [0, 1.2, -141], radio: 2.5, escena: 'r01_coge_casco' },
+        obj: 'Te pica la nuca. Acércate a la vitrina rota', alt: { label: 'Tocar la vitrina (eco)', a: [0, -140.6], r: 1.8 } },
+      { t: 'fn', f: async D => { D.sfx('escaner'); D.pulsoRey({}); await D.npc('mikeholo', [3, -143.5], Math.PI, { def: 'mikeholo' }); await D.npc('r01', [7.6, -143.2], -Math.PI / 2, { def: 'r01' }); D.mirarA('mikeholo', 'r01'); } },
+      { t: 'escena', cinematica: true, l: [
+        { npc: 'r01', a: [.8, -141.4], vel: 1, esperar: true, max: 8 },
+        { n: 'MIKE', t: 'R cero uno. Eso se queda en la vitrina.', gesto: ['mikeholo', 'senalar'] },
+        { f: async D => { const n = npcs.r01; const q = n ? n.root.position.clone() : new V3(.8, 0, -141.4); D.ocultar('r01'); await D.npc('r01c', [q.x, q.z], Math.PI / 2, { def: 'r01casco' }); D.mirarA('r01c', 'mikeholo'); } },
+        { npc: 'r01c', gesto: 'nuca', dur: 2.4 }, { espera: 1.8 },
+        { n: 'MIKE', t: '...¿Por qué haces eso? Eso lo hago yo.', pausa: .5 },
+        { f: D => { D.sfx('clang'); D.ocultar('r01c'); D.ocultar('mikeholo'); D.cinematica(false); } },
+        { n: 'DAVE', t: 'Me pica la nuca. Y estoy viendo cosas que no he visto.', pausa: .4, rec: [R_('dave', 'eco_r01_coge_el_casco', 3), R_('dave', 'vio_el_gesto_de_mike_en_r01', 3)] }] },
       { t: 'ir', a: 'lab.mikeHerido', r: 2.4, obj: 'Encuentra a Mike' },
       { t: 'escena', cinematica: true, l: [
         { npc: 'mike', mira: 'jugador' },
         ['DAVE', '¡Mike! Mike, mírame.'],
         { n: 'MIKE', t: 'Dave... te dije que te fueras a casa.', pausa: .5 },
         ['DAVE', '¿Qué ha pasado? ¿Qué es todo esto?'],
-        ['MIKE', 'Uno de ellos se puso el casco. Yo no se lo di, Dave. Se lo puso él solo.'],
-        ['MIKE', 'Ahora todos le obedecen. Todos los que dormían.'],
+        ['MIKE', 'Yo no se lo di, Dave. Se lo puso él solo.'],
         ['DAVE', 'Aguanta. Te saco de aquí.'],
         { n: 'MIKE', t: 'Hay una cinta... en mi mesa. Escúchala cuando estés enfadado conmigo. Vas a estarlo.', pausa: .4 },
         ['MIKE', 'Quería que fuéramos los reyes, hermanito. Tú y yo.'],
@@ -319,7 +348,8 @@ export const ACTO1 = [
       { t: 'dialogo', l: [['DAVE', 'Con una piedra no voy a llegar lejos. La tienda de Hank, en la calle mayor. Tendrá algo mejor.']] },
       { t: 'fn', f: D => D.barreraLab(true) },
       { t: 'ir', a: 'lab.salida', r: 3, obj: 'Sal del laboratorio (la cinta de Mike sigue en su mesa)' },
-      { t: 'subir', obj: 'Vuelve a la pickup (está junto al cordón)' },
+      { t: 'fn', f: D => D.bloquearCoche(false) },
+      { t: 'subir', obj: 'Vuelve a la pickup (está junto al cordón). Opcional: el cajón de Mike' },
       { t: 'conducir', a: 'tienda.coche', r: 7, obj: 'Ve a la tienda de armas de Hank (calle mayor)' },
       { t: 'fin' }
     ]
@@ -329,13 +359,17 @@ export const ACTO1 = [
     id: 'c3', sub: 'Capítulo 4', titulo: 'La tienda de armas', nota: 'Calle mayor · 04:05', hora: 'noche', caos: true, inicio: 'tienda.llegada', armas: ['punos', 'piedra'], ambiente: 'viento',
     async prep(D) {
       ocultarOB(); rifle(); D.coche('tienda.coche'); D.barreraLab(true); D.clima('lluvia', .3);
+      D.eco('eco_saqueadores', { pos: [-7, 1.2, -50], radio: 3, escena: 'saqueadores_fuerzan_la_puerta' });
       await D.npc('hank', D.P['tienda.hank'], Math.PI / 2, { mira: true });
     },
     pasos: [
       { t: 'dialogo', l: [['HANK', '¡Eh! ¡Eh, tú, el de la piedra! ¡Ayúdame, por favor!']] },
       { t: 'oleada', obj: 'Salva a Hank', cp: { punto: 'tienda.llegada' }, robots: [[-5, -57, {}], [-3.5, -43, {}], [6, -52, {}], [-2, -62, { retraso: 2 }], [5, -45, { retraso: 3 }]],
         rec: (m, D) => m.recordar('hank', 'salvado', 3, { confianza: .4, afecto: .35, miedo: -.2 }, { arma: D.jugador.w }) },
-      { t: 'ir', a: 'tienda.dentro', r: 2.2, obj: 'Entra en la tienda' },
+      { t: 'opcional', id: 'eco-saq', label: 'La cerradura forzada (eco)', a: [-7.5, -50], r: 1.8, alto: 1.4, evento: 'eco_visto', filtro: d => d.id === 'eco_saqueadores',
+        f: D => D.murmurar([['RATA', '(eco) La tienda de Hank. Hoy no: tiene la persiana echada. Volvemos cuando esté solo, por detrás, por el callejón.'], ['DAVE', 'Rata. Por el callejón. Va a volver.']]),
+        recUsar: [R_('dave', 'vio_ruta_saqueadores', 2)] },
+      { t: 'ir', a: 'tienda.dentro', r: 2.2, obj: 'Entra en la tienda (opcional: la puerta tiene marcas, examínala)' },
       { t: 'escena', l: [
         ['HANK', '¿Están... están todos muertos? ¿Se dice muertos? ¿Apagados?'],
         ['DAVE', 'Apagados.'],
@@ -372,6 +406,10 @@ export const ACTO1 = [
         { n: 'RATA', t: 'Esta noche más que nunca. La munición de la trastienda y las escopetas. Ahora.', gesto: ['rata', 'senalar'] },
         { n: 'CHISPA', t: 'Rata... vámonos. Hay cosas ahí fuera.', mira: ['chispa', 'rata'] }] },
       { t: 'eleccion', id: 'c3.saqueadores', quien: 'RATA', pregunta: '¿Y bien, piedrecitas? No tengo toda la noche.', ops: [
+        { k: 'esperaba', txt: 'Os esperaba, Rata. Por el callejón, ¿no?', si: m => m.recuerda('dave', 'vio_ruta_saqueadores'),
+          rec: [R_('rata', 'dave_le_vio_venir', 2, { miedo: .5 }), R_('hank', 'dave_le_protegio_sin_pelear', 2, { confianza: .35, afecto: .2 })],
+          l: [{ n: 'RATA', t: '...¿Cómo sabes tú eso?', pausa: .4 }, { n: 'CHISPA', t: 'Te lo dije. Nos han visto. Vámonos.' }, { npc: 'rata', a: [-5, -50], vel: 1.4 }, { npc: 'chispa', a: [-5, -49], vel: 1.6 }, { npc: 'saq1', a: [-5, -51.5], vel: 1.5, esperar: true, max: 5 },
+            { f: (D, m) => { D.ocultar('rata'); D.ocultar('chispa'); D.ocultar('saq1'); m.marcar('saqueadores_ofendidos', true); } }, { n: 'HANK', t: '¿Cómo sabías lo del callejón?' }, { n: 'DAVE', t: 'Me pica la nuca.' }] },
         { k: 'dar', txt: 'Llevaos la munición. Nadie tiene que morir esta noche.',
           rec: [R_('hank', 'dave_cedio_ante_rata', 2, { confianza: .05, miedo: .15 }), R_('rata', 'dave_le_dio_municion', 2, { confianza: .2 })],
           f: (D, m) => m.marcar('saqueadores_armados', true),
@@ -397,11 +435,16 @@ export const ACTO1 = [
         { n: 'HANK', t: 'Les has... les has dado una paliza a los de Rata. En mi tienda. Por mí.', gesto: ['hank', 'manos'] },
         ['DAVE', 'Se irán arrastrando. Mañana estarán más enfadados.'],
         ['HANK', 'Mañana. Qué palabra tan optimista.']] },
+      { t: 'guardar', id: 'grabadora-hank', label: 'Grabadora de Hank (guardar)', a: [-17.2, -51.7], punto: 'tienda.dentro', alto: 1.3 },
       { t: 'escena', cinematica: false, l: [
         { n: 'HANK', t: 'Y esto también. Por si se te acaban las balas. O la suerte.', f: D => D.arma('cuchillo', false) },
         ['DAVE', 'Vente a mi casa. Hay sitio. Y mi mujer hace un café que resucita muertos.'],
         { n: 'HANK', t: 'Visto lo visto, mejor que no.', pausa: .3 },
         { si: m => m.confianza('hank') > .5, n: 'HANK', t: 'Oye, Dave. Gracias. De verdad. Hacía mucho que nadie...  Bueno. Vamos.' }] },
+      // escolta: Hank va hasta la pickup y los robots vienen por él
+      { t: 'fn', f: D => { D.caminar('hank', [-6, -50], 1.2).then(() => D.caminar('hank', [1.6, -43.5], 1.1)); D.robots([[8, -60, { vel: .8 }], [-4, -66, { vel: .8, retraso: 1.5 }], [9, -36, { vel: .8, retraso: 3 }]]); } },
+      { t: 'oleada', robots: [], obj: 'Protege a Hank hasta la pickup', cp: { punto: 'tienda.dentro', rehacer: async D => { await D.npc('hank', [-6, -50], Math.PI / 2, {}); D.caminar('hank', [1.6, -43.5], 1.1); D.robots([[8, -60, { vel: .8 }], [-4, -66, { vel: .8 }]]); } },
+        rec: [R_('hank', 'dave_le_escolto', 1, { confianza: .1 })] },
       { t: 'fn', f: D => { D.ocultar('hank'); D.say('Hank sube a la pickup'); D.robots([[-2, 12, { vel: .7 }], [3, 34, { vel: .7 }], [-1, 56, { vel: .7 }]]); } },
       { t: 'subir', obj: () => vr() ? 'Sube a la pickup · B/Y cambia de arma, gatillo dispara' : 'Sube a la pickup · rueda o 1-4 para cambiar de arma' },
       { t: 'conducir', a: 'casa.calle', r: 8, obj: 'Lleva a Hank a tu casa (calle mayor hacia el sur)' },
@@ -455,17 +498,20 @@ export const ACTO1 = [
         ['DAVE', 'Hank, quédate con Sarah. Si alguien que no sea yo llama a la puerta...'],
         { n: 'HANK', t: 'No abro. Ni a ti, si vienes raro.', gesto: ['hank', 'asentir'] },
         { n: 'SARAH', t: 'Dave. Esta vez te despides.', gesto: ['sarah', 'abrazar'], rec: [R_('sarah', 'despedida_amanecer', 1, { afecto: .1 })] }] },
+      { t: 'guardar', id: 'diario2', label: 'Escribir en el cuaderno (guardar)', pos: new V3(17.15, .5, 86.62), punto: 'casa.puertaDentro' },
       { t: 'subir', obj: 'Sube a la pickup con John' },
       { t: 'fn', f: D => { D.ocultar('john'); D.ocultar('hank'); D.ocultar('sarah'); D.robots([[3, -20, { vel: .7 }], [-2, -60, { vel: .8 }]]); } },
-      { t: 'conducir', a: 'cordon.coche', r: 8, obj: 'Vuelve al laboratorio con John' },
+      { t: 'conducir', a: 'cordon.coche', r: 10, bajar: true, obj: 'Vuelve al laboratorio con John' },
       { t: 'fn', f: async D => { await D.npc('john', [2, -118], Math.PI, { porte: 'quieto' }); D.caminar('john', [3.4, -143.6], 2.4); D.barreraLab(true); } },
       cinta('g3', true),
-      { t: 'ir', a: 'lab.consola', r: 1.8, obj: 'Revisa los monitores de Mike' },
+      { t: 'ir', a: 'lab.consola', r: 1.8, obj: 'Los monitores de Mike: revisa las cámaras de seguridad' },
+      { t: 'fn', f: D => { D.pantallas(['CÁMARAS · LAB M.', '1 · entrada', '2 · cápsulas', '3 · vitrina', '> elegir cámara'], false); D.camara(1); } },
+      { t: 'evento', nombre: 'camara_vista', filtro: d => d.alternativa || String(d.id) === '3', obj: 'Busca en las cámaras la que enfoca la vitrina', alt: { label: 'Cámaras: ver la 3 (vitrina)', a: 'lab.consola', r: 2 } },
       { t: 'fn', f: async D => {
-        D.pantallas(['> reproducir camara_03', '04:58:12 · movimiento', 'unidad R-01 junto a vitrina', '> rastrear casco_v3', 'señal: 120 km ↑ subiendo', 'ALERTA: objeto en órbita'], true);
+        D.pantallas(['> camara_03 · 04:58:12', 'unidad R-01 junto a vitrina', '> rastrear casco_v3', 'señal: 120 km ↑ subiendo', 'ALERTA: objeto en órbita'], true);
         D.sfx('escaner'); await D.npc('r01', [8.6, -143.2], -Math.PI / 2, { def: 'r01' }); D.mirarA('john', 'r01'); } },
       { t: 'escena', cinematica: true, l: [
-        ['JOHN', 'La cámara tres lo grabó todo. Mira.'],
+        { si: m => m.recuerda('dave', 'eco_r01_coge_el_casco'), n: 'DAVE', t: 'Lo vi anoche. Aquí. Sin cámaras.' },
         { npc: 'r01', a: [.9, -141.6], vel: .9, esperar: true, max: 10 },
         { npc: 'r01', mira: [0, 1.1, -142] },
         ['DAVE', 'Ese robot... Mike lo llamaba R cero uno. Era el más fuerte de todos.'],
@@ -478,23 +524,25 @@ export const ACTO1 = [
         ['DAVE', 'Mike hacía eso. Siempre. Cuando algo le salía bien.'],
         { n: 'JOHN', t: 'Es una máquina, Dave. Imitan lo que ven.', mira: ['john', 'jugador'], pausa: .5, rec: [R_('dave', 'vio_el_gesto_de_mike_en_r01', 3)] },
         { f: D => { D.ocultar('r01c'); } }] },
+      { t: 'evento', nombre: 'camara_vista', filtro: d => d.alternativa || String(d.id) === '3-2210', obj: 'El registro de la cámara 3 tiene otra grabación de esa noche: rebobina a las 22:10',
+        f0: D => D.pantallas(['> camara_03 · registro', '04:58 · movimiento', '22:10 · M. (acceso manual)', '21:02 · D. sale'], false), alt: { label: 'Cámara 3: rebobinar a las 22:10', a: 'lab.consola', r: 2 } },
       // GIRO: la grabación de las 22:10 — Mike se pone el casco delante de R-01. No se lo arrebataron: se metió él dentro.
       { t: 'fn', f: async D => {
         D.pantallas(['> reproducir camara_03', '22:10:47 · M. con casco_v3', '> grabar_sujeto --MIKE', 'destino: R-01 (local)', 'progreso: 61% ... ERROR', 'reintentar: SÍ'], true); D.sfx('escaner');
         await D.npc('mikeholo', [1.4, -141.2], -Math.PI / 2, { def: 'mikeholo' }); await D.npc('r01', [8.6, -143.2], Math.PI / 2, { def: 'r01' }); D.mirarA('mikeholo', 'r01'); D.mirarA('r01', 'mikeholo'); D.mirarA('john', 'mikeholo'); } },
       { t: 'escena', cinematica: true, l: [
-        ['JOHN', 'Hay otra grabación. Las diez y diez. Una hora después de que te fueras.'],
         { n: 'DAVE', t: 'Ese es Mike. Con el casco puesto.', gesto: ['mikeholo', 'manos'] },
         { npc: 'mikeholo', gesto: 'nuca', dur: 2.4 }, { espera: 1.6 },
-        { n: 'JOHN', t: 'Se está grabando. Como hizo contigo. Pero no en un servidor.', pausa: .4 },
-        { n: 'JOHN', t: 'Dentro de esa máquina.', mira: ['john', 'r01'], pausa: .8 },
+        { n: 'JOHN', t: 'Lee la pantalla. «Destino: R-01.» No en un servidor. Dentro de esa máquina.', mira: ['john', 'r01'], pausa: .8 },
         { n: 'DAVE', t: '«Yo no se lo di. Se lo puso él solo.»', pausa: .6 },
         { n: 'DAVE', t: 'No me mintió. Solo no me dijo quién iba dentro.', gesto: ['john', 'cabizbajo'], rec: [R_('dave', 'sabe_que_mike_se_grabo_en_r01', 3), R_('john', 'vio_la_grabacion_de_mike', 2)] },
         { f: D => { D.ocultar('mikeholo'); D.ocultar('r01'); D.cinematica(false); D.mirarA('john', 'jugador'); } },
         ['JOHN', 'Ahora mira la señal.'],
         ['DAVE', '¿Ciento veinte kilómetros? ¿Hacia arriba?'],
         ['JOHN', 'Se ha llevado el casco al espacio. En una nave que le han construido en una noche.'],
-        { mira: ['john', [-11.5, 2.6, -142.5]] },
+        { mira: ['john', [-11.5, 2.6, -142.5]] }] },
+      { t: 'mirar', a: [-11.5, 2.6, -142.5], obj: 'Mira la pizarra de Mike', marca: false, max: 12, ang: .35 },
+      { t: 'escena', l: [
         { n: 'JOHN', t: '«Lázaro S.» ...Conozco ese nombre.', pausa: .3 },
         ['DAVE', '¿De qué?'],
         { n: 'JOHN', t: 'De nada que importe ahora.', mira: ['john', 'jugador'] },
@@ -584,6 +632,9 @@ export const ACTO1 = [
         ['JOHN', 'Escucha. Yo me encargo de los guardias. Tú cruza entre los barracones hasta las cajas junto al hangar.'],
         ['JOHN', 'Si te ven, se acabó. Y no dispares a nadie: son soldados, no robots. No todos son Varela.'],
         ['HANK', 'Yo me quedo vigilando el camión. Alguien tiene que hacerlo. Valientemente.']] },
+      { t: 'opcional', id: 'eco-john', label: 'Una radio en el suelo (eco)', a: [131.5, -36.5], r: 1.8, alto: 1, evento: 'eco_visto', filtro: d => d.id === 'eco_john', eco: { id: 'eco_john', pos: [131.5, 1.2, -36.5], radio: 2.5, escena: 'john_habla_con_lazaro' },
+        f: D => D.murmurar([['JOHN', '(eco, ayer) Aquí Cole. Tengo la placa de Ruiz. LZR cero cero cero uno vive en el pueblo. Tiene coche y tiene motivos.'], ['JOHN', '(eco) Lo traigo mañana. Cole fuera.'], ['DAVE', '...«Lo traigo.» A mí.']]),
+        recUsar: [R_('dave', 'eco_john_lazaro', 3), R_('john', 'dave_sabe_lo_de_ayer', 2, { miedo: .3 })] },
       { t: 'sigilo', a: 'base.senal', r: 2.4, mantener: true, cp: { punto: 'base.parada' },
         obj: 'Cruza el callejón entre los barracones hasta las cajas del hangar sin que te vean',
         guardias: D => [{ ruta: [[129, -39], [147, -39]], vel: .95, pausa: 2.2 }, { ruta: [[144, -50], [144, -24]], vel: 1.15 }],
@@ -623,7 +674,9 @@ export const ACTO1 = [
         { n: 'DAVE', t: '¿Agente? ¿Ese código es de Lázaro?', pausa: .3 },
         { n: 'JOHN', t: 'Es un código que funciona.' },
         { si: m => m.recuerda('dave', 'lazaro_le_busca'), n: 'DAVE', t: 'Varela dijo que Lázaro me buscaba a mí.' },
-        { si: m => m.recuerda('dave', 'lazaro_le_busca'), n: 'JOHN', t: 'Y te encontré yo primero. Da las gracias y sube.' }], rec: [R_('dave', 'john_uso_codigo_lazaro', 3), R_('john', 'dave_sabe_lo_del_codigo', 2, { miedo: .2 })] },
+        { si: m => m.recuerda('dave', 'lazaro_le_busca'), n: 'JOHN', t: 'Y te encontré yo primero. Da las gracias y sube.' },
+        { si: m => m.recuerda('dave', 'eco_john_lazaro'), n: 'DAVE', t: 'Te oí. Ayer, en esta base. «Lo traigo mañana.»' },
+        { si: m => m.recuerda('dave', 'eco_john_lazaro'), n: 'JOHN', t: '...Y te he traído. Vivo. Acuérdate de eso cuando decidas qué hacer conmigo.' }], rec: [R_('dave', 'john_uso_codigo_lazaro', 3), R_('john', 'dave_sabe_lo_del_codigo', 2, { miedo: .2 })] },
       // clímax: Varela llega a la rampa con su fusil y los robots detrás
       { t: 'fn', f: async D => {
         await D.npc('john', [147.4, 26.2], Math.PI, { mira: 'varela', porte: 'quieto' }); await D.npc('hank', [152.6, 26.4], Math.PI, { mira: 'varela' });
@@ -634,14 +687,14 @@ export const ACTO1 = [
         { si: m => m.eleccion('c4.varela') === 'atar', n: 'VARELA', t: 'Te dije que los nudos no durarían toda la noche.' },
         { si: m => m.eleccion('c4.varela') === 'soltar', n: 'VARELA', t: 'Me dejaste ir. Error de novato.' },
         { n: 'JOHN', t: 'Varela. Mira detrás de ti.', mira: ['john', [136, 1.5, 38]] },
-        { f: D => { D.G.pausaEnemigos = true; D.robots([[134, 38, { vel: .9 }], [139, 39, { vel: .9, retraso: .5 }], [142, 40, { vel: .9, retraso: 1 }]]); D.sfx('alerta'); D.mirarA('varela', [136, 1.5, 38]); } },
+        { f: D => { D.congelar(true); D.robots([[134, 38, { vel: .9 }], [139, 39, { vel: .9, retraso: .5 }], [142, 40, { vel: .9, retraso: 1 }]]); D.sfx('alerta'); D.mirarA('varela', [136, 1.5, 38]); } },
         { n: 'VARELA', t: '...Joder.', gesto: ['varela', 'cabizbajo'], pausa: .4 }] },
       { t: 'eleccion', id: 'c5.varela', quien: 'VARELA', pregunta: '¡Chaval! ¡Son demasiados!', ops: [
         { k: 'salvar', txt: '¡Sube! ¡Hay sitio para uno más!', rec: [R_('varela', 'dave_le_ofrecio_sitio', 3, { confianza: .6, afecto: .3 }), R_('john', 'dave_salvaria_a_cualquiera', 1, { afecto: .1 })],
           l: [{ n: 'VARELA', t: '...No. Alguien tiene que cerrar la puerta.', mira: ['varela', 'jugador'], pausa: .3 }, { n: 'VARELA', t: 'Lárgate, chaval. Y mata a ese rey de chatarra por mí.', gesto: ['varela', 'apuntar'] }] },
         { k: 'dejar', txt: 'Te dije que no volvieras.', rec: [R_('varela', 'dave_le_dejo_atras', 3, { confianza: -.4 }), R_('hank', 'vio_a_dave_dejar_a_un_hombre', 2, { miedo: .2 })],
           l: [{ n: 'VARELA', t: 'Ja. Al final tú y yo no somos tan distintos.', pausa: .3 }, { n: 'HANK', t: 'Dave... Dave, ¿qué has hecho?', mira: ['hank', 'jugador'] }] }] },
-      { t: 'fn', f: (D, m) => { if (m.eleccion('c5.varela') === 'dejar') D.ocultar('varela'); else { D.mirarA('varela', [136, 1.5, 38]); D.gesto('varela', 'apuntar', 30); } D.cinematica(false); D.G.pausaEnemigos = false; } },
+      { t: 'fn', f: (D, m) => { if (m.eleccion('c5.varela') === 'dejar') D.ocultar('varela'); else { D.mirarA('varela', [136, 1.5, 38]); D.gesto('varela', 'apuntar', 30); } D.cinematica(false); D.congelar(false); } },
       { t: 'oleada', robots: [], obj: 'Acaba con los robots de la rampa', cp: { punto: 'base.rampa', rehacer: D => D.robots([[134, 38, { vel: .9 }], [139, 39, { vel: .9 }], [142, 40, { vel: .9 }]]) } },
       { t: 'fn', f: D => D.ocultar('varela') },
       { t: 'dialogo', l: [['JOHN', '¡Motores listos! ¡Todos dentro, ya!']] },

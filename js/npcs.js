@@ -24,6 +24,8 @@ const DEF = {
   r01casco: { tipo: 'robot', ficha: 'elrey', holo: 0xff5a3a, o: { body: 0x2a2c30, dark: 0x0e0f12, accent: 0xc9a23a, eye: 0xff2a1a, scale: 1.05, helmet: true } },
   // Mike en la grabación de las 22:10 (holograma)
   mikeholo: { tipo: 'rig', ficha: 'mike', holo: 0x29e6ff, o: { camisa: 0x5a6a7a, pantalon: 0x2a2f3a, piel: 0xd9a27c, pelo: 0x2b1d14, bata: true } },
+  // Nico, 13 años, solo en la cancha del parque a las 3 de la madrugada (acto I, opcional)
+  nico: { tipo: 'rig', o: { camisa: 0x2a5a9a, pantalon: 0x2a2a30, piel: 0xd8a882, pelo: 0x2a1a10, mangaCorta: true, scale: .78 } },
   // R-7 que patrulla y escanea en una escena (no combate: es un actor)
   r7: { tipo: 'robot', o: { body: 0x4a4f57, dark: 0x1a1c20, accent: 0x8a1a12, eye: 0xff2a1a, antenna: true, scale: .95 } },
   hank: { tipo: 'glb', ficha: 'hank', modelo: 'Hank', alto: 1.78, ry: 0 },
