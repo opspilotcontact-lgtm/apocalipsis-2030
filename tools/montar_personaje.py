@@ -340,4 +340,5 @@ def render_anims(a, arm, malla, acciones):
     sc.frame_set(1)
 
 
-main()
+if __name__ == '__main__':
+    main()

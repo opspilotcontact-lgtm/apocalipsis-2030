@@ -127,3 +127,24 @@ node tools/finalizar.mjs assets_src/derivados/X56D_montado_crudo.glb assets/arma
 Trampas nuevas: el importador glTF deja `rotation_mode = QUATERNION` (rotation_euler no hace nada → ahora `--rot-z` usa matrix_world);
 `gltf-transform prune` borraba los empties de anclaje (ahora `--keep-leaves true`); renderizar en Blender clips de OTRO GLB sobre
 un personaje GLB no sirve (cada importación inventa su reposo) → se verifica en three.
+
+## Auto-rig propio (sin Mixamo) — 22-nov noche
+| Script | Qué hace |
+|---|---|
+| `autorig.py` | estático A-pose → esqueleto `mixamorig` de Dave ajustado (longitudes a lo largo de cada hueso, roll intacto → rotaciones de reposo idénticas a Dave) + pesos + Idle/Walk/HitHead |
+| `verificar_rig_three.mjs` | three r170: carga cada GLB riggeado y aplica sus clips + Walking/Running/Head_Hit de la biblioteca (cadera/cabeza/pies) |
+
+```bash
+"$B" -b --factory-startup --python tools/autorig.py -- --entrada assets_src/derivados/Mike_crudo.glb --nombre Mike --tex-dir assets_src/derivados/Mike_tex --anim Idle=assets_src/mixamo/anims/Breathing_Idle.fbx --anim Walk=assets_src/mixamo/anims/Walking.fbx --anim HitHead=assets_src/mixamo/anims/Head_Hit.fbx --en-sitio Walk --salida assets_src/derivados/Mike_animado_crudo.glb --render-dir assets_src/derivados/renders
+#   igual Unidad01, El_Rey; Coloso además: --piernas medir --pesos auto
+node tools/finalizar.mjs assets_src/derivados/Mike_animado_crudo.glb assets/personajes/Mike_animado.glb --tex ktx2 --tam 2048 --tam-normal 1024 --fallback-webp
+node verificar_rig_three.mjs <raiz> assets/personajes/Mike_animado_webp.glb ...   # desde una carpeta con three@0.170.0
+```
+- **Trampa**: el reposo del rig de Mixamo (Dave_rig.fbx) es el bind pose = la A-pose que se subió; la T-pose es solo la
+  acción importada. Quitar la acción NO resetea los pose bones (se quedan en T): hay que `matrix_basis.identity()`.
+- Los clips compartidos solo llevan rotaciones + traslación de Hips (en unidades de Dave). Por eso la escala va en el
+  objeto armature (= altura × proporción de pierna) y las piernas no se estiran en unidades de hueso: la cadera del clip pisa el suelo.
+- Pesos: por defecto `transferir` (pesos de Dave llevados al esqueleto ajustado por LBS y Data Transfer nearest-face-interpolated):
+  más limpio en ropa ancha (bata de Mike). `auto` (heat) falla en HY3D/TRELLIS sin soldar; se intenta sobre copia soldada y,
+  si falla, sobre remallado por vóxeles a ×10 de escala (heat falla en medidas pequeñas). Heat va mejor en robots (Coloso).
+- Los vértices partidos por costuras UV reciben el peso del vértice soldado (sin grietas al deformar).

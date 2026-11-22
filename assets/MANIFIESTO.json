@@ -2,7 +2,7 @@
   "generado": "2026-11-22",
   "pipeline": "tools/README.md",
   "cargar": "GLTFLoader + MeshoptDecoder + KTX2Loader(transcoder https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/); *_webp.glb solo necesita MeshoptDecoder",
-  "estado": "Producción 22-nov: Dave/Hank animados, Mike estático (listo para Mixamo), R7_partes, X56D, biblioteca de 41 clips. Pendientes: Unidad01, El_Rey, Coloso (horneados en assets_src/derivados/*_crudo.glb), Unidad01_partes.",
+  "estado": "Producción 22-nov: Dave/Hank animados (Mixamo); Mike/Unidad01/El_Rey/Coloso animados con autorig propio; R7_partes, X56D, biblioteca de 41 clips. Pendientes: TRELLIS John/Lena/R-7/escopeta Arda (sin cupo ZeroGPU), Unidad01_partes.",
   "assets": [
     {
       "path": "assets/personajes/Dave.glb",
@@ -28,7 +28,10 @@
       "skin": false,
       "animaciones": [],
       "anclas": [],
-      "lod": "assets/personajes/Dave_LOD1.glb"
+      "lod": "assets/personajes/Dave_LOD1.glb",
+      "fuente": "Hunyuan3D (HY3D) desde concepto propio",
+      "licencia": "Tencent Hunyuan Community License (no comercial para este uso)",
+      "comercial": false
     },
     {
       "path": "assets/personajes/Dave_animado.glb",
@@ -61,7 +64,10 @@
           "duracion_s": 1.57
         }
       },
-      "anclas": []
+      "anclas": [],
+      "fuente": "Hunyuan3D (HY3D) desde concepto propio",
+      "licencia": "Tencent Hunyuan Community License (no comercial para este uso)",
+      "comercial": false
     },
     {
       "path": "assets/personajes/Dave_LOD1.glb",
@@ -80,7 +86,10 @@
       "altura_m": 1.8,
       "skin": false,
       "animaciones": [],
-      "anclas": []
+      "anclas": [],
+      "fuente": "Hunyuan3D (HY3D) desde concepto propio",
+      "licencia": "Tencent Hunyuan Community License (no comercial para este uso)",
+      "comercial": false
     },
     {
       "path": "assets/robots/R7_partes.glb",
@@ -132,7 +141,10 @@
         "Pieza_Pierna_R": "mixamorig:RightLeg",
         "Pieza_Pie_R": "mixamorig:RightFoot"
       },
-      "anclas": []
+      "anclas": [],
+      "fuente": "Asset pack propio (Soldado_R7, HY3D)",
+      "licencia": "no comercial",
+      "comercial": false
     },
     {
       "path": "assets/personajes/Hank_animado.glb",
@@ -155,7 +167,10 @@
         },
         "HitHead": {}
       },
-      "anclas": []
+      "anclas": [],
+      "fuente": "Hunyuan3D (HY3D) desde concepto propio",
+      "licencia": "Tencent Hunyuan Community License (no comercial para este uso)",
+      "comercial": false
     },
     {
       "path": "assets/personajes/Mike.glb",
@@ -166,7 +181,10 @@
       "skin": false,
       "animaciones": [],
       "anclas": [],
-      "mixamo": "assets_src/derivados/Mike_mixamo_ligero.fbx"
+      "mixamo": "assets_src/derivados/Mike_mixamo_ligero.fbx",
+      "fuente": "TRELLIS.2 (microsoft/TRELLIS.2, HF Space)",
+      "licencia": "MIT",
+      "comercial": true
     },
     {
       "path": "assets/armas/X56D.glb",
@@ -188,17 +206,164 @@
           0.149,
           -0.592
         ]
-      }
+      },
+      "fuente": "TRELLIS.2 (microsoft/TRELLIS.2, HF Space)",
+      "licencia": "MIT",
+      "comercial": true
+    },
+    {
+      "path": "assets/personajes/Mike_animado.glb",
+      "fallback": "assets/personajes/Mike_animado_webp.glb",
+      "tipo": "personaje riggeado con autorig propio (esqueleto mixamorig de Dave ajustado, 41 huesos, reposo idéntico a Dave)",
+      "tris": 21991,
+      "altura_m": 1.75,
+      "skin": true,
+      "joints": 41,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 2048",
+        "metallicRoughness": "KTX2 ETC1S 2048",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "bytes": {
+        "ktx2": 2720416,
+        "webp": 1730076
+      },
+      "orientacion": "cara a +Z, pies en y=0 (raíz Mike_Armature rot +90X, escala 0.01*k)",
+      "animaciones": {
+        "Idle": {},
+        "Walk": {
+          "en_sitio": true
+        },
+        "HitHead": {}
+      },
+      "clips_compartidos": "assets/personajes/anim/*.glb compatibles (verificado con tools/verificar_rig_three.mjs)",
+      "rig": {
+        "herramienta": "tools/autorig.py",
+        "pesos": "transferir (Dave)",
+        "piernas": "dave"
+      },
+      "anclas": [],
+      "fuente": "TRELLIS.2 (microsoft/TRELLIS.2, HF Space)",
+      "licencia": "MIT",
+      "comercial": true,
+      "nota": "manchas negras del horneado en los costados de la bata (zona tapada por el brazo en A-pose) visibles al andar"
+    },
+    {
+      "path": "assets/personajes/Unidad01_animado.glb",
+      "fallback": "assets/personajes/Unidad01_animado_webp.glb",
+      "tipo": "personaje riggeado con autorig propio (esqueleto mixamorig de Dave ajustado, 41 huesos, reposo idéntico a Dave)",
+      "tris": 22000,
+      "altura_m": 1.85,
+      "skin": true,
+      "joints": 41,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 2048",
+        "metallicRoughness": "KTX2 ETC1S 2048",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "bytes": {
+        "ktx2": 3140252,
+        "webp": 1953600
+      },
+      "orientacion": "cara a +Z, pies en y=0 (raíz Unidad01_Armature rot +90X, escala 0.01*k)",
+      "animaciones": {
+        "Idle": {},
+        "Walk": {
+          "en_sitio": true
+        },
+        "HitHead": {}
+      },
+      "clips_compartidos": "assets/personajes/anim/*.glb compatibles (verificado con tools/verificar_rig_three.mjs)",
+      "rig": {
+        "herramienta": "tools/autorig.py",
+        "pesos": "transferir (Dave)",
+        "piernas": "dave"
+      },
+      "anclas": [],
+      "fuente": "Hunyuan3D (HY3D) desde concepto propio",
+      "licencia": "Tencent Hunyuan Community License (no comercial para este uso)",
+      "comercial": false
+    },
+    {
+      "path": "assets/personajes/El_Rey_animado.glb",
+      "fallback": "assets/personajes/El_Rey_animado_webp.glb",
+      "tipo": "personaje riggeado con autorig propio (esqueleto mixamorig de Dave ajustado, 41 huesos, reposo idéntico a Dave)",
+      "tris": 22000,
+      "altura_m": 2.05,
+      "skin": true,
+      "joints": 41,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 2048",
+        "metallicRoughness": "KTX2 ETC1S 2048",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "bytes": {
+        "ktx2": 3372816,
+        "webp": 2335684
+      },
+      "orientacion": "cara a +Z, pies en y=0 (raíz El_Rey_Armature rot +90X, escala 0.01*k)",
+      "animaciones": {
+        "Idle": {},
+        "Walk": {
+          "en_sitio": true
+        },
+        "HitHead": {}
+      },
+      "clips_compartidos": "assets/personajes/anim/*.glb compatibles (verificado con tools/verificar_rig_three.mjs)",
+      "rig": {
+        "herramienta": "tools/autorig.py",
+        "pesos": "transferir (Dave)",
+        "piernas": "dave"
+      },
+      "anclas": [],
+      "fuente": "Hunyuan3D (HY3D) desde concepto propio",
+      "licencia": "Tencent Hunyuan Community License (no comercial para este uso)",
+      "comercial": false
+    },
+    {
+      "path": "assets/personajes/Coloso_animado.glb",
+      "fallback": "assets/personajes/Coloso_animado_webp.glb",
+      "tipo": "personaje riggeado con autorig propio (esqueleto mixamorig de Dave ajustado, 41 huesos, reposo idéntico a Dave)",
+      "tris": 22000,
+      "altura_m": 2.6,
+      "skin": true,
+      "joints": 41,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 2048",
+        "metallicRoughness": "KTX2 ETC1S 2048",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "bytes": {
+        "ktx2": 3290304,
+        "webp": 2105084
+      },
+      "orientacion": "cara a +Z, pies en y=0 (raíz Coloso_Armature rot +90X, escala 0.01*k)",
+      "animaciones": {
+        "Idle": {},
+        "Walk": {
+          "en_sitio": true
+        },
+        "HitHead": {}
+      },
+      "clips_compartidos": "assets/personajes/anim/*.glb compatibles (verificado con tools/verificar_rig_three.mjs)",
+      "rig": {
+        "herramienta": "tools/autorig.py",
+        "pesos": "heat (auto)",
+        "piernas": "medir"
+      },
+      "anclas": [],
+      "fuente": "Hunyuan3D (HY3D) desde concepto propio",
+      "licencia": "Tencent Hunyuan Community License (no comercial para este uso)",
+      "comercial": false,
+      "nota": "imperfecto: proporciones de robot (piernas +21 %), el talón se hunde ~8 cm en el Walk"
     }
   ],
   "derivados_mixamo": {
     "Dave": "assets_src/derivados/Dave_mixamo.fbx",
     "pendientes_de_visto_bueno": [
-      "assets_src/derivados/Hank_mixamo.fbx",
-      "assets_src/derivados/Unidad01_mixamo.fbx",
-      "assets_src/derivados/El_Rey_mixamo.fbx",
-      "assets_src/derivados/Coloso_mixamo.fbx"
-    ]
+      "assets_src/derivados/Hank_mixamo.fbx"
+    ],
+    "nota": "Unidad01/El_Rey/Coloso/Mike ya no necesitan Mixamo: tools/autorig.py"
   },
   "biblioteca_clips": {
     "carpeta": "assets/personajes/anim/",
