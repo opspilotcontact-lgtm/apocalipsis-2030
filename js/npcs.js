@@ -5,12 +5,15 @@ import { THREE, V3, G, angLerp, clamp, scene, groundAt } from './nucleo.js';
 import { makeHuman, makeRobot, animRig, poseHerido, instancia, holograma } from './cuerpos.js';
 import { playerFeet, playerHead } from './jugador.js';
 import { FICHAS } from './personajes/fichas.js';
-import { precargarActor, cargarClips, crearActor } from './combate/actor.js';
+import { prepararModelo, crearCuerpo, gestoActor, poseHeridoActor, quitarPoseHerido, parpadeo } from './historia/actores.js';
+import { W } from './mundo/tierra.js';
 import { enemies } from './enemigos.js';
 
 // ry: giro extra para que el frente del modelo mire a +Z · ficha: de dónde sale el porte y el gesto propio
 const DEF = {
-  mike: { tipo: 'rig', ficha: 'mike', o: { camisa: 0x5a6a7a, pantalon: 0x2a2f3a, piel: 0xd9a27c, pelo: 0x2b1d14, bata: true } },
+  // Mike con esqueleto (Mike_animado + clips de la biblioteca); herido = «Sitting» + pose procedural en el suelo; respaldo: humano por código
+  mike: { tipo: 'actor', ficha: 'mike', modelo: 'Mike_animado', alto: 1.75, respaldo: { tipo: 'rig', o: { camisa: 0x5a6a7a, pantalon: 0x2a2f3a, piel: 0xd9a27c, pelo: 0x2b1d14, bata: true } },
+    clips: { idle: 'Breathing_Idle', nervioso: 'Nervously_Look_Around', habla: 'Standing_Arguing', miedo: 'Sad_Idle', herido: 'Sitting' } },
   sarah: { tipo: 'rig', ficha: 'sarah', o: { camisa: 0x7a3a4a, pantalon: 0x30343c, piel: 0xe0b090, pelo: 0x6a3a1a, melena: true, scale: .9 } },
   john: { tipo: 'rig', ficha: 'john', o: { camisa: 0x4a5236, pantalon: 0x3d4330, piel: 0xc58c64, pelo: 0x111111, gorra: true, gorraColor: 0x3a4028, chaleco: 0x2f3524, zapato: 0x5a4030 } },
   soldado: { tipo: 'rig', o: { camisa: 0x4a5236, pantalon: 0x3d4330, piel: 0xe0b090, pelo: 0x1a1410, casco: true, gorraColor: 0x3a4028, chaleco: 0x2f3524 } },
@@ -22,10 +25,13 @@ const DEF = {
   chispa: { tipo: 'rig', ficha: 'chispa', o: { camisa: 0x8a2a20, pantalon: 0x3a3a44, piel: 0xe6b894, pelo: 0x6a4a2a, scale: .9 } },
   saqueador: { tipo: 'rig', o: { camisa: 0x4a4a3a, pantalon: 0x2a2a2a, piel: 0xb07a54, pelo: 0x0e0c0a, gorra: true, gorraColor: 0x1a1a1a } },
   // R-01 en la grabación de la cámara 3 (holograma con esqueleto: puede hacer el gesto de Mike)
-  r01: { tipo: 'robot', ficha: 'elrey', holo: 0xff5a3a, o: { body: 0x2a2c30, dark: 0x0e0f12, accent: 0xc9a23a, eye: 0xff2a1a, scale: 1.05 } },
-  r01casco: { tipo: 'robot', ficha: 'elrey', holo: 0xff5a3a, o: { body: 0x2a2c30, dark: 0x0e0f12, accent: 0xc9a23a, eye: 0xff2a1a, scale: 1.05, helmet: true } },
+  r01: { tipo: 'actor', ficha: 'elrey', modelo: 'El_Rey_animado', alto: 2.05, holo: 0xff5a3a, clips: { idle: 'Idle', habla: 'Idle' },
+    respaldo: { tipo: 'robot', o: { body: 0x2a2c30, dark: 0x0e0f12, accent: 0xc9a23a, eye: 0xff2a1a, scale: 1.05 } } },
+  r01casco: { tipo: 'actor', ficha: 'elrey', modelo: 'El_Rey_animado', alto: 2.05, holo: 0xff5a3a, casco: true, clips: { idle: 'Idle', habla: 'Idle' },
+    respaldo: { tipo: 'robot', o: { body: 0x2a2c30, dark: 0x0e0f12, accent: 0xc9a23a, eye: 0xff2a1a, scale: 1.05, helmet: true } } },
   // Mike en la grabación de las 22:10 (holograma)
-  mikeholo: { tipo: 'rig', ficha: 'mike', holo: 0x29e6ff, o: { camisa: 0x5a6a7a, pantalon: 0x2a2f3a, piel: 0xd9a27c, pelo: 0x2b1d14, bata: true } },
+  mikeholo: { tipo: 'actor', ficha: 'mike', modelo: 'Mike_animado', alto: 1.75, holo: 0x29e6ff, clips: { idle: 'Breathing_Idle', habla: 'Standing_Arguing', nervioso: 'Breathing_Idle', miedo: 'Sad_Idle' },
+    respaldo: { tipo: 'rig', o: { camisa: 0x5a6a7a, pantalon: 0x2a2f3a, piel: 0xd9a27c, pelo: 0x2b1d14, bata: true } } },
   // Nico, 13 años, solo en la cancha del parque a las 3 de la madrugada (acto I, opcional)
   nico: { tipo: 'rig', o: { camisa: 0x2a5a9a, pantalon: 0x2a2a30, piel: 0xd8a882, pelo: 0x2a1a10, mangaCorta: true, scale: .78 } },
   // R-7 que patrulla y escanea en una escena (no combate: es un actor)
@@ -33,46 +39,57 @@ const DEF = {
   // Hank con esqueleto (ActorGLB + biblioteca de clips); si el .glb animado no carga, cae al estático 'Hank'
   hank: { tipo: 'actor', ficha: 'hank', modelo: 'Hank_animado', alto: 1.78, glb: 'Hank', herible: true,
     clips: { idle: 'Breathing_Idle', nervioso: 'Nervously_Look_Around', habla: 'Standing_Arguing', miedo: 'Sad_Idle', sentado: 'Sitting' } },
-  unidad01: { tipo: 'glb', ficha: 'unidad01', modelo: 'Unidad01', alto: 1.85, ry: 0 },
-  elrey: { tipo: 'glb', ficha: 'elrey', modelo: 'El_Rey', alto: 2.05, ry: 0 }
+  // Unidad 01 dormida en su cápsula (Idle muy lento, ojo cian) y El Rey; respaldo: los .glb estáticos de antes
+  unidad01: { tipo: 'actor', ficha: 'unidad01', modelo: 'Unidad01_animado', alto: 1.85, glb: 'Unidad01', ry: 0, quieto: .3, ojos: { color: 0x7ff3ff },
+    clips: { idle: 'Idle', habla: 'Idle', nervioso: 'Idle', miedo: 'Idle' } },
+  elrey: { tipo: 'actor', ficha: 'elrey', modelo: 'El_Rey_animado', alto: 2.05, glb: 'El_Rey', ry: 0, ojos: { color: 0xff2a1a },
+    clips: { idle: 'Idle', habla: 'Idle', nervioso: 'Idle', miedo: 'Idle' } }
 };
 // aspecto de un humano (para que el director cree enemigos humanos con la misma cara que el NPC)
 export const aspecto = key => DEF[key]?.o || DEF.saqueador.o;
 export const npcs = {};
-// clips de la biblioteca que usan los PNJ con esqueleto (assets/personajes/anim)
-const CLIPS_PNJ = ['Breathing_Idle', 'Nervously_Look_Around', 'Standing_Arguing', 'Sad_Idle', 'Crying', 'Pointing', 'Head_Hit', 'Hit_Reaction', 'Big_Side_Hit', 'Talking_On_Phone', 'Sitting', 'Waving'];
-const listoActor = {};
-function prepararActor(d) { return listoActor[d.modelo] ||= Promise.all([precargarActor(d.modelo), cargarClips(CLIPS_PNJ)]).then(() => true).catch(e => { console.warn('[npcs] ' + d.modelo + ' no cargó; uso el modelo estático', e); return false; }); }
-prepararActor(DEF.hank); // en segundo plano desde el arranque
+const prepararActor = d => prepararModelo(d.modelo);
+// en segundo plano: Hank, Mike y Unidad 01 desde el arranque (prólogo); El Rey y el Coloso un poco después
+prepararActor(DEF.hank); prepararActor(DEF.mike); prepararActor(DEF.unidad01);
+setTimeout(() => { prepararModelo('El_Rey_animado'); prepararModelo('Coloso_animado'); }, 12000);
 // gesto (npcs.js) → clip de un disparo o bucle mientras dura
 const GESTO_CLIP = { senalar: ['Pointing', 1], llorar: ['Crying', 0], cabizbajo: ['Sad_Idle', 0], manos: ['Standing_Arguing', 0], encoger: ['Standing_Arguing', 0], telefono: ['Talking_On_Phone', 0], rendirse: ['Sad_Idle', 0] };
 
 // id: nombre único; def: clave en DEF (por defecto = id) · punto [x,z] · yaw (0 = mirando al sur, +Z)
 // o: { pose: 'pie'|'herido', mira: true (al jugador) | 'id' | [x,z] , holo: true, y, porte }
+const pendientes = {}; // id → promesa mientras carga (dos llamadas seguidas no crean dos cuerpos)
 export async function npc(id, punto, yaw = 0, o = {}) {
   const key = o.def || id, d = DEF[key];
   let n = npcs[id];
-  if (!n) {
-    if (d.tipo === 'rig') { const R = makeHuman(d.o); n = { id, R, root: R.root, tipo: 'rig' }; if (d.holo) n.holoMat = holograma(R.root, d.holo); }
-    else if (d.tipo === 'robot') { const R = makeRobot(d.o); n = { id, R, root: R.root, tipo: 'rig' }; if (d.holo) { n.holoMat = holograma(R.root, d.holo); R.root.traverse(m => { if (m.isMesh) m.userData.enemy = null; }); } }
-    else if (d.tipo === 'actor' && await prepararActor(d)) {
-      const A = crearActor(d.modelo, { altura: d.alto, resDanio: 512 }); n = { id, A, root: A.root, tipo: 'actor', hp: 100, miedoT: 0, golpeT: 0, herible: !!d.herible, clips: d.clips || {} };
-      for (const m of A.hit) m.userData.npcId = id;
-    }
-    else { const g = await instancia(d.glb || d.modelo, d.alto, { ry: d.ry || 0 }); n = { id, g, root: g, tipo: 'glb', inner: g.children[0] }; }
-    npcs[id] = n; scene.add(n.root);
+  if (!n) n = await (pendientes[id] ||= cuerpo(id, d).then(n => {
+    npcs[id] = n; scene.add(n.root); delete pendientes[id];
     const f = FICHAS[d.ficha || key] || {};
     n.porte = f.porte || 'firme'; n.tic = f.gestoTic || null;
     n.off = {}; n.cab = { y: 0, x: 0 }; n.fase = Math.random() * 9; n.miradaT = 2 + Math.random() * 4; n.mirada = null; n.cruce = 0; n.ticT = 4 + Math.random() * 4;
-  }
+    return n;
+  }));
   if (n.llegada) { n.llegada(); n.llegada = null; }
   n.pose = o.pose || 'pie'; n.destino = null; n.spd = 0; n.gesto = null; n.cruce = 0;
   n.mirar = o.mira === true ? 'jugador' : o.mira || null;
   if (o.porte) n.porte = o.porte;
   n.root.visible = true; n.root.position.set(punto[0], o.y ?? groundAt(punto[0], punto[1], 3), punto[1]); n.root.rotation.set(0, yaw, 0); n.yawBase = yaw;
   if (n.inner) n.inner.rotation.set(0, n.inner.rotation.y, 0);
-  if (n.tipo === 'actor') { n.hp = 100; n.miedoT = 0; }
+  if (n.tipo === 'actor') { n.hp = 100; n.miedoT = 0; if (n.pose !== 'herido') quitarPoseHerido(n.A); }
   if (o.holo && n.tipo === 'glb' && !n.holoMat) n.holoMat = holograma(n.g);
+  return n;
+}
+// cuerpo según DEF; si el .glb animado no carga, cae a d.respaldo (humano/robot por código) o al .glb estático d.glb
+async function cuerpo(id, d) {
+  let n;
+  if (d.tipo === 'rig') { const R = makeHuman(d.o); n = { id, R, root: R.root, tipo: 'rig' }; if (d.holo) n.holoMat = holograma(R.root, d.holo); }
+  else if (d.tipo === 'robot') { const R = makeRobot(d.o); n = { id, R, root: R.root, tipo: 'rig' }; if (d.holo) { n.holoMat = holograma(R.root, d.holo); R.root.traverse(m => { if (m.isMesh) m.userData.enemy = null; }); } }
+  else if (d.tipo === 'actor' && await prepararActor(d)) {
+      const A = crearCuerpo(d.modelo, { alto: d.alto, holo: d.holo, casco: d.casco ? d.holo : null, ojos: d.ojos, sinDanio: !d.herible });
+      n = { id, A, root: A.root, tipo: 'actor', hp: 100, miedoT: 0, golpeT: 0, herible: !!d.herible, clips: d.clips || {}, holoMat: A.holoMat, quieto: d.quieto || 0 };
+      for (const m of A.hit) m.userData.npcId = id;
+  }
+  else if (d.respaldo) return cuerpo(id, { ...d, ...d.respaldo });
+  else { const g = await instancia(d.glb || d.modelo, d.alto, { ry: d.ry || 0 }); n = { id, g, root: g, tipo: 'glb', inner: g.children[0] }; if (d.holo) n.holoMat = holograma(g, d.holo); }
   return n;
 }
 export function ocultar(id) { const n = npcs[id]; if (n) { n.root.visible = false; n.destino = null; if (n.llegada) { n.llegada(); n.llegada = null; } } }
@@ -150,6 +167,7 @@ function poseReposo(n, t, habla) {
 
 // ---------- bucle ----------
 export function actualizarNpcs(dt, hablante) {
+  actualizarColoso(dt);
   for (const id in npcs) {
     const n = npcs[id]; if (!n.root.visible) continue;
     const habla = hablante === id ? 1 : 0;
@@ -215,6 +233,19 @@ export function actualizarNpcs(dt, hablante) {
   }
 }
 
+// ---------- Coloso dormido en el hangar de la base: sustituye al .glb estático de mundo/tierra.js (W.colosoBase) ----------
+const coloso = { pedido: false, A: null };
+function actualizarColoso(dt) {
+  const s = W.colosoBase; if (!s) return;
+  if (!coloso.pedido) { coloso.pedido = true; prepararModelo('Coloso_animado').then(ok => { if (!ok || !s.parent) return;
+    const A = crearCuerpo('Coloso_animado', { alto: 2.6, sinDanio: true }); A.root.position.copy(s.position); A.root.rotation.copy(s.rotation);
+    s.parent.add(A.root); s.visible = false; A.reproducir(A.clip('idle'), 0, .25); A.malla && (A.malla.frustumCulled = false); coloso.A = A; }); }
+  const A = coloso.A; if (!A) return;
+  const pf = playerFeet(tH), d = Math.hypot(pf.x - A.root.position.x, pf.z - A.root.position.z);
+  A.root.visible = d < 90; if (d > 45) return; // solo se anima de cerca
+  A.mixer.update(dt); A.raiz.updateMatrixWorld(true);
+}
+
 // ---------- PNJ con esqueleto (ActorGLB): clip según lo que hace + capa procedural del actor (mirar, dolor) ----------
 function actualizarActor(n, dt, spd, habla, pm, gt, gtt, gw) {
   const A = n.A, C = n.clips;
@@ -225,6 +256,7 @@ function actualizarActor(n, dt, spd, habla, pm, gt, gtt, gw) {
   let clip, ts = 1;
   const sentado = n.root.parent !== scene && n.root.parent?.type !== 'Scene';
   if (sentado && A.tieneClip(C.sentado)) clip = C.sentado;
+  else if (n.pose === 'herido' && A.tieneClip(C.herido)) clip = C.herido;
   else if (spd > .15) { clip = A.clip('walk'); ts = clamp(spd / A.velClip(clip), .5, 2); }
   else if (gt && GESTO_CLIP[gt] && !GESTO_CLIP[gt][1] && A.tieneClip(GESTO_CLIP[gt][0])) clip = GESTO_CLIP[gt][0];
   else if (n.miedoT > 0 || n.hp < 35 || n.pose === 'herido') clip = n.hp < 35 && A.tieneClip('Crying') ? 'Crying' : C.miedo;
@@ -232,8 +264,14 @@ function actualizarActor(n, dt, spd, habla, pm, gt, gtt, gw) {
   else if (n.porte === 'nervioso' || n.porte === 'inquieto') clip = (Math.floor((G.time + n.fase * 3) / 9) % 2) ? C.nervioso : C.idle;
   else clip = C.idle;
   if (!clip || !A.tieneClip(clip)) clip = A.clip('idle');
+  if (n.quieto && spd <= .15) ts = n.quieto; // dormido / en reposo lento (Unidad 01 en la cápsula)
   A.reproducir(clip, .35, ts); if (A.actual) A.actual.timeScale = ts;
   A.mixer.update(dt); A.raiz.updateMatrixWorld(true);
+  if (n.pose === 'herido') poseHeridoActor(A, G.time);
+  // gestos sin clip (la nuca de Mike y de R-01, coger, cabizbajo) y el tic propio
+  if (gt && gw > 0 && !(GESTO_CLIP[gt] && A.tieneClip(GESTO_CLIP[gt][0]))) gestoActor(A, gt, gw, gtt);
+  if (n.holoMat) parpadeo(n.holoMat);
+  if (A.ojos) A.ojos.mat.color.setHex(A.ojos.base).multiplyScalar(.75 + Math.sin(G.time * 1.3 + n.fase) * .25);
   A.fase += dt * (spd > .15 ? 5 * clamp(spd / 1.6, .6, 2) : 0);
   A.capa(dt, { mirar: pm ? tH.copy(pm) : null, aturdido: n.golpeT > 0 ? n.golpeT : 0 });
   // asentir / negar con la cabeza (no hay clip)

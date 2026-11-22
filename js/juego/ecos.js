@@ -4,7 +4,7 @@
 // el mundo se apaga (esfera pegada a la cámara + niebla y exposición) y se reproduce una escena fantasma:
 // figuras cian translúcidas que aparecen, caminan, gesticulan y hablan con subtítulos. Se puede repetir.
 // Al terminar emite director.evento('eco_visto', { id }).
-// API: ecos.registrar(id, { pos:[x,z], radio, duracion, titulo, activo, actores:{ clave:{ robot, o, nombre } },
+// API: ecos.registrar(id, { pos:[x,z], radio, duracion, titulo, activo, actores:{ clave:{ robot, o, nombre, modelo?, alto? } } (modelo = ActorGLB holograma si ya cargó),
 //        guion:[{ t, actor, accion:'aparecer'|'caminar'|'gesto'|'linea'|'sonido'|'desaparecer', datos }] })
 //      ecos.activo(id, bool) · ecos.reproducir(id) · ecos.parar() · ecos.cerca() · ecos.lista
 import { THREE, V3, G, scene, camera, renderer, groundAt, angLerp, rnd } from '../nucleo.js';
@@ -13,6 +13,8 @@ import { sfx, buzz } from '../fx.js';
 import { ui } from '../ui.js';
 import { playerFeet, leftC, rightC, ctrl } from '../jugador.js';
 import { eventoHistoria } from '../interaccion/ruido.js';
+import { actorListo } from '../combate/actor.js';
+import { crearCuerpo, gestoActor } from '../historia/actores.js';
 
 const tA = new V3(), tB = new V3();
 const ECOS = {};
@@ -42,7 +44,15 @@ velo.renderOrder = 990; velo.visible = false; velo.frustumCulled = false; camera
 let nieblaBase = null, expoBase = 1; const NIEBLA_ECO = new THREE.Color(.55, .68, .74);
 
 // ---------- Fantasmas ----------
-function fantasma(def) {
+// def.modelo: personaje con esqueleto (ActorGLB) si ya está cargado; si no, el humano/robot por código de siempre
+const poolActor = {};
+const CLIP_GESTO = { manos: 'Standing_Arguing', telefono: 'Talking_On_Phone', senalar: 'Pointing' };
+function fantasma(def, clave) {
+  if (def.modelo && actorListo(def.modelo)) try {
+    const k = def.modelo + '|' + clave, A = poolActor[k] ||= crearCuerpo(def.modelo, { alto: def.alto, holo: def.color || 0x29e6ff });
+    A.root.visible = false; scene.add(A.root); A.reproducir(A.clip('idle'), 0);
+    return { A, R: { root: A.root }, mat: A.holoMat, def, destino: null, vel: 1.3, spd: 0, gesto: null, objeto: null };
+  } catch (er) { console.warn('[ecos] actor ' + def.modelo + ' falló; uso el cuerpo por código', er); }
   const R = def.robot ? makeRobot({ body: 0x2a2c30, dark: 0x0e0f12, accent: 0xc9a23a, eye: 0xff2a1a, ...(def.o || {}) }) : makeHuman({ camisa: 0x5a6a7a, pantalon: 0x2a2f3a, piel: 0xd9a27c, pelo: 0x2b1d14, ...(def.o || {}) });
   const mat = holograma(R.root, def.color || 0x29e6ff);
   R.root.traverse(m => { if (m.isMesh) { m.renderOrder = 1000; m.userData.enemy = null; m.raycast = () => {}; } });
@@ -63,7 +73,7 @@ export function reproducir(id) {
   const e = ECOS[id]; if (!e) return false;
   if (actual) parar(true);
   const figs = {};
-  for (const k in e.actores) figs[k] = fantasma(e.actores[k]);
+  for (const k in e.actores) figs[k] = fantasma(e.actores[k], k);
   actual = { e, t: 0, i: 0, figs };
   sfx('escaner'); zumbido(true);
   ui.subtitulo('ECO', e.titulo); // (la tarjeta de capítulo tapa la pantalla: aquí no)
@@ -91,7 +101,9 @@ function paso(s) {
 function llevar(f, tipo) {
   if (actual.objeto) actual.objeto.removeFromParent();
   const geo = tipo === 'casco' ? new THREE.SphereGeometry(.14, 12, 8, 0, 6.3, 0, 1.9) : new THREE.BoxGeometry(.04, .08, .012);
-  const m = new THREE.Mesh(geo, f.mat); m.renderOrder = 1000; m.position.set(0, -.08, .06); f.R.armR.grip.add(m); actual.objeto = m;
+  const m = new THREE.Mesh(geo, f.mat); m.renderOrder = 1000; actual.objeto = m;
+  if (f.A) { const h = f.A.H.RightHand; h.getWorldPosition(m.position); m.position.y -= .06; scene.add(m); h.attach(m); } // el hueso va en centímetros: attach conserva la escala
+  else { m.position.set(0, -.08, .06); f.R.armR.grip.add(m); }
 }
 
 // ---------- Sonido: zumbido grave mientras dura el eco ----------
@@ -154,8 +166,14 @@ export function actualizarEcos(dt) {
     f.spd = 0;
     if (f.destino) { const p = R.root.position, dx = f.destino.x - p.x, dz = f.destino.z - p.z, d = Math.hypot(dx, dz);
       if (d < .2) f.destino = null; else { f.spd = f.vel; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), dt * 5); p.x += Math.sin(R.root.rotation.y) * f.spd * dt; p.z += Math.cos(R.root.rotation.y) * f.spd * dt; p.y = groundAt(p.x, p.z, p.y + .5); } }
+    if (f.A) { const A = f.A, g = f.gesto, w = g ? Math.min(1, g.t / .4, Math.max(0, (g.dur - g.t) / .4)) : 0, cg = g && CLIP_GESTO[g.tipo];
+      const n = f.spd > 0 ? A.clip('walk') : cg && A.tieneClip(cg) ? cg : A.clip('idle'), ts = f.spd > 0 ? Math.max(.5, Math.min(2, f.spd / A.velClip(n))) : 1;
+      A.reproducir(n, .3, ts); if (A.actual) A.actual.timeScale = ts; A.mixer.update(dt); A.raiz.updateMatrixWorld(true);
+      if (g) { g.t += dt; if (!cg) gestoActor(A, g.tipo, w, g.t); if (g.t >= g.dur) f.gesto = null; }
+    } else {
     animRig(R, dt, { spd: f.spd });
     if (f.gesto) { const g = f.gesto; g.t += dt; const w = Math.min(1, g.t / .4, Math.max(0, (g.dur - g.t) / .4)); GESTOS[g.tipo]?.(R, w); if (g.t >= g.dur) f.gesto = null; }
+    }
     f.mat.opacity = .22 + Math.random() * .1 + (Math.sin(G.time * 31 + k.length) > .92 ? .2 : 0);
   }
   if (A.t >= A.e.duracion) { const id = A.e.id; A.e.visto++; parar(); eventoHistoria('eco_visto', { id }); }
@@ -166,7 +184,7 @@ export const ecos = { registrar, activo, reproducir, parar, cerca, lista: ECOS, 
 // ---------- Tres ecos de ejemplo ----------
 // laboratorio: Mike saca el casco de la vitrina y se lo da a R-01, que sale por la puerta trasera
 registrar('lab_casco', { titulo: 'El casco · 04:58', pos: [0, -140.6], radio: 2.6, duracion: 17,
-  actores: { mike: { nombre: 'MIKE', o: { bata: true } }, r01: { nombre: 'R-01', robot: true, o: { scale: 1.05, helmet: false } } },
+  actores: { mike: { nombre: 'MIKE', modelo: 'Mike_animado', alto: 1.75, o: { bata: true } }, r01: { nombre: 'R-01', modelo: 'El_Rey_animado', alto: 2.05, robot: true, o: { scale: 1.05, helmet: false } } },
   guion: [
     { t: 0, actor: 'mike', accion: 'aparecer', datos: { pos: [1.8, -139.4], yaw: Math.PI * .8 } },
     { t: 0, actor: 'r01', accion: 'aparecer', datos: { pos: [-2.4, -137.5], yaw: Math.PI * .7 } },

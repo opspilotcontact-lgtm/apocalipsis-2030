@@ -11,6 +11,7 @@ import { registrar as registrarInter } from '../interaccion/objetos.js';
 import { manosVR } from '../interaccion/index.js';
 import { reloj } from '../interaccion/reloj.js';
 import { eventoHistoria } from '../interaccion/ruido.js';
+import { prepararModelo, crearCuerpo, gestoActor } from '../historia/actores.js';
 
 const tA = new V3(), tB = new V3();
 const W = 256, H = 144, CAPA = 5;
@@ -68,15 +69,32 @@ const robMat = holograma(rob.root, 0xff5a3a);
 const casco = new THREE.Mesh(new THREE.SphereGeometry(.14, 12, 8, 0, 6.3, 0, 1.9), robMat);
 rob.root.traverse(m => { if (m.isMesh) { m.layers.set(CAPA); m.raycast = () => {}; } }); casco.layers.set(CAPA);
 rob.root.visible = false; scene.add(rob.root, casco); animRig(rob, 1, { spd: 0 });
+// R-01 real (El_Rey_animado con esqueleto) en cuanto cargue; mientras tanto (o si falla) el robot por código
+let robA = null, robPedido = false;
+function pedirRobA() {
+  robPedido = true;
+  prepararModelo('El_Rey_animado').then(ok => { if (!ok) return; try { robA = crearCuerpo('El_Rey_animado', { alto: 2.05, holo: 0xff5a3a, capa: CAPA }); robA.root.visible = false; scene.add(robA.root); } catch (er) { console.warn('[camaras] R-01 animado falló', er); } });
+}
+const ocultarRob = () => { rob.root.visible = false; if (robA) robA.root.visible = false; };
 // recorrido: entra por la trasera, va a la vitrina, coge el casco, sale
 const RUTA = [[0, [-8.5, -147.3]], [4, [-.6, -141.6]], [6.5, [-.6, -141.6]], [10.5, [-8.5, -147.3]], [12, [-8.5, -147.3]]];
 function grabacion(dt) {
   estado.t += dt; const t = estado.t % 12; let i = 0; while (i < RUTA.length - 2 && RUTA[i + 1][0] <= t) i++;
   const [t0, a] = RUTA[i], [t1, b] = RUTA[i + 1], k = Math.min(1, (t - t0) / Math.max(.01, t1 - t0));
   const x = a[0] + (b[0] - a[0]) * k, z = a[1] + (b[1] - a[1]) * k, mov = Math.hypot(b[0] - a[0], b[1] - a[1]) > .1 && k < 1;
+  const coger = t > 5 && t < 6.5 ? (t - 5) / 1.5 : t >= 6.5 && t < 10 ? 1 - (t - 6.5) / 3.5 * .3 : 0;
+  if (!robPedido) pedirRobA();
+  if (robA) {
+    const A = robA; rob.root.visible = false; A.root.visible = true; A.root.position.set(x, 0, z); if (mov) A.root.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]); else if (i === 2) A.root.rotation.y = Math.PI;
+    const n = mov ? A.clip('walk') : A.clip('idle'), ts = mov ? Math.max(.5, Math.min(2, 1.3 / A.velClip(n))) : 1;
+    A.reproducir(n, .3, ts); if (A.actual) A.actual.timeScale = ts; A.mixer.update(dt); A.raiz.updateMatrixWorld(true);
+    gestoActor(A, 'coger', Math.min(1, coger * 2));
+    if (t > 6) A.H.RightHand.getWorldPosition(casco.position); else casco.position.set(0, 1.45, -142);
+    A.holoMat.opacity = .3 + Math.random() * .15; robMat.opacity = A.holoMat.opacity; return;
+  }
   rob.root.visible = true; rob.root.position.set(x, 0, z); if (mov) rob.root.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]); else if (i === 2) rob.root.rotation.y = Math.PI;
   animRig(rob, dt, { spd: mov ? 1.3 : 0 });
-  const coger = t > 5 && t < 6.5 ? (t - 5) / 1.5 : t >= 6.5 && t < 10 ? 1 - (t - 6.5) / 3.5 * .3 : 0; rob.armR.sh.rotation.x = -1.3 * Math.min(1, coger * 2); rob.armL.sh.rotation.x = -1.3 * Math.min(1, coger * 2);
+  rob.armR.sh.rotation.x = -1.3 * Math.min(1, coger * 2); rob.armL.sh.rotation.x = -1.3 * Math.min(1, coger * 2);
   if (t > 6) { rob.armR.grip.getWorldPosition(casco.position); } else casco.position.set(0, 1.45, -142);
   robMat.opacity = .3 + Math.random() * .15;
 }
@@ -97,7 +115,7 @@ export function actualizarCamaras(dt) {
   const on = capOn.tierra;
   camera.getWorldPosition(tA); const d = Math.hypot(tA.x - SX, tA.z - (SZ + .8));
   grupo.visible = on && d < 40;
-  if (!grupo.visible) { rob.root.visible = false; casco.visible = false; return; }
+  if (!grupo.visible) { ocultarRob(); casco.visible = false; return; }
   // tocar botones con el dedo (VR)
   for (const b of botones) { b.t = Math.max(0, b.t - dt); b.m.position.y = .795 - (b.t > 0 ? .008 : 0); }
   if (G.mode === 'vr') for (const m of manosVR) { if (!m.c.src || m.sostiene) continue; for (const b of botones) { b.m.getWorldPosition(tB); if (tB.distanceTo(m.tip) < .045 && b.t <= 0) { pulsar(b); buzz(m.c, .4, 30); } } }
@@ -106,7 +124,7 @@ export function actualizarCamaras(dt) {
   estado.mirando = d < 3.2 && tB.z < -.2 && on;
   if (estado.mirando && !estado.encendida) ver(estado.id);
   pant.visible = capa.visible = estado.encendida && d < 12;
-  casco.visible = estado.grab; if (!estado.grab) rob.root.visible = false;
+  casco.visible = estado.grab; if (!estado.grab) ocultarRob();
   if (!estado.mirando) return;
   if (estado.grab) grabacion(dt);
   estado.acum += dt; if (estado.acum < .1) return; estado.acum = 0;
