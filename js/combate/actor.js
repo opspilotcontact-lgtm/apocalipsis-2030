@@ -140,7 +140,7 @@ export class ActorGLB {
     // (aplica los huesos a 22k triángulos); aquí se lleva el rayo al espacio de reposo con la matriz del hueso golpeado
     if (this.malla) { this.bind = indice(this.malla.geometry); }
     this.mixer = new THREE.AnimationMixer(this.raiz); this.acc = new Map(); this.actual = null; this.unaVez = null;
-    this.est = prepararPiel(this.raiz, { piel: o.piel || ['head', 'neck', 'handL', 'handR'], hp: 1e9, res: o.resDanio || 1024 });
+    this.est = prepararPiel(this.raiz, { piel: o.piel || ['head', 'neck', 'handL', 'handR'], hp: 1e9, res: o.resDanio || 512 }); // 512: 1,3 MB por actor en vez de 5,3 (la sangre ya es borrosa)
     this.hit = crearHitboxes(this.H, this.raiz);
     this.muerto = false; this.dolor = null; this.roto = {}; this.t = Math.random() * 9; this.fase = 0; this.pintadas = 0;
     this.mirarPeso = 0; this.mirarA = new V3();

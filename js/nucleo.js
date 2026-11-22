@@ -40,7 +40,7 @@ THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace('gl_Frag
 export const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x10141f, 6, 60);
 const pmrem = new THREE.PMREMGenerator(renderer);
-const envSala = pmrem.fromScene(new RoomEnvironment(), .04).texture; scene.environment = envSala; // reserva hasta que llegue el HDRI
+const salaRT = pmrem.fromScene(new RoomEnvironment(), .04); let envSala = salaRT.texture; scene.environment = envSala; // reserva hasta que llegue el HDRI
 export const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.05, 330);
 export const dolly = new THREE.Group(); scene.add(dolly);
 export const head = new THREE.Group(); head.position.y = 1.62; dolly.add(head); head.add(camera);
@@ -68,7 +68,7 @@ export function grain(x, s, base, amt, n, h = s) {
 // Convención: block()/flat() escalan las UV en metros (1 unidad de UV = o.s metros); rep ajusta cuántas
 // veces se repite la textura dentro de esa unidad para que una baldosa real mida unos 2-4 m.
 const TEXR = 'assets/texturas/';
-const ktx2 = new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/').detectSupport(renderer);
+export const ktx2 = new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/').detectSupport(renderer);
 const texCache = new Map(); // nombre → { base, copias[], datos }
 function volcar(c, t) { c.image = t.image; c.mipmaps = t.mipmaps; c.format = t.format; c.type = t.type; c.minFilter = t.minFilter; c.magFilter = THREE.LinearFilter; c.generateMipmaps = false; c.needsUpdate = true; }
 export function texPBR(nombre, srgb, rep = 1) {
@@ -207,8 +207,27 @@ function fachada({ dif, nor, tinte, marco, cols, filas, prob, rep = 4, w = 1024,
   return { map, em, nm, rm, huecos };
 }
 const fBld = fachada({ dif: 'red_brick_03', tinte: '#b9a89a', marco: '#3e3a35', cols: 4, filas: 4, prob: .42, rep: 3 });
-const fCasa = fachada({ dif: 'painted_plaster_wall', tinte: '#e6d7bb', marco: '#efe9dc', cols: 2, filas: 2, prob: .5, rep: 2 });
-const fCasa2 = fachada({ dif: 'painted_plaster_wall', tinte: '#a9b6bd', marco: '#dcdcd4', cols: 2, filas: 2, rep: 2, comparte: fCasa });
+const fCasa = fachada({ dif: 'painted_plaster_wall', tinte: '#e6d7bb', marco: '#efe9dc', cols: 2, filas: 2, prob: .5, rep: 2, w: 512 }); // casas: 2×2 huecos, 512 basta (−4 MB cada una)
+const fCasa2 = fachada({ dif: 'painted_plaster_wall', tinte: '#a9b6bd', marco: '#dcdcd4', cols: 2, filas: 2, rep: 2, w: 512, comparte: fCasa });
+// ---------- Lienzos horneados a KTX2 (memoria de texturas) ----------
+// Los lienzos grandes y estáticos (fachadas, atlas de rótulos) se hornean una vez a assets/texturas/lienzos/<id>.ktx2
+// (ver PLAN §9, comando con toktx). Si el .ktx2 existe, sus datos sustituyen a los del lienzo en la MISMA textura
+// (comprimida en la GPU: ~1 B/px en vez de 4 + mipmaps); si no, se queda el lienzo. ?lienzos=0 los ignora.
+const LIENZOS = new Map(), SIN_KTX = new URLSearchParams(location.search).get('lienzos') === '0';
+export function hornearLienzo(t, id) {
+  if (LIENZOS.has(id)) return t; LIENZOS.set(id, { t, c: t.image });
+  if (!SIN_KTX) ktx2.load(TEXR + 'lienzos/' + id + '.ktx2', k => { const cs = t.colorSpace;
+    Object.assign(t, { isCompressedTexture: true, image: k.image, mipmaps: k.mipmaps, format: k.format, type: k.type, generateMipmaps: false, flipY: false, minFilter: k.minFilter, magFilter: THREE.LinearFilter });
+    t.colorSpace = cs; t.needsUpdate = true; k.dispose(); }, undefined, () => {});
+  return t;
+}
+// depuración: manda cada lienzo registrado (volteado: el .ktx2 va con flipY=false) como PNG a un receptor local
+window.__exportarLienzos = async (url = 'http://127.0.0.1:8799/') => { const r = [];
+  for (const [id, { c }] of LIENZOS) { const [o, x] = cv2d(c.width, c.height); x.translate(0, c.height); x.scale(1, -1); x.drawImage(c, 0, 0);
+    const b = await new Promise(res => o.toBlob(res, 'image/png')); await fetch(url + id + '.png', { method: 'POST', body: b }); r.push(id + ' ' + c.width + '×' + c.height); }
+  return r; };
+for (const [n, f] of [['bld', fBld], ['casa', fCasa]]) for (const k of ['map', 'em', 'nm', 'rm']) hornearLienzo(f[k], `fachada_${n}_${k}`);
+hornearLienzo(fCasa2.map, 'fachada_casa2_map');
 const facMat = (f, o = {}) => std({ map: f.map, normalMap: f.nm, roughnessMap: f.rm, roughness: 1, metalness: 0, emissiveMap: f.em, emissive: 0xffffff, emissiveIntensity: 1.2, ...o });
 
 export const glow = (c, i) => new THREE.MeshStandardMaterial({ color: 0x050505, emissive: c, emissiveIntensity: i });
@@ -304,6 +323,17 @@ export function setCapa(nombre, on) {
   capas[nombre].visible = on;
   capOn.tierra = capas.tierra.visible; capOn.espacio = capas.espacio.visible;
   capOn.calma = capOn.tierra && capas.calma.visible; capOn.caos = capOn.tierra && capas.caos.visible;
+  if (!on) { clearTimeout(liberarT); liberarT = setTimeout(liberarOcultas, 5000); }
+}
+// Memoria de texturas: lo que solo usan capas ocultas (calma/caos/espacio/tierra) se libera de la GPU a los 5 s.
+// No se pierde nada: la imagen sigue en JS y three.js la vuelve a subir cuando la capa se vea otra vez.
+let liberarT = 0;
+const texDe = (o, f) => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) for (const k in m) if (m[k]?.isTexture) f(m[k]); };
+function liberarOcultas() {
+  const ocultas = Object.values(capas).filter(c => !c.visible); if (!ocultas.length) return;
+  const usadas = new Set(), recorrer = o => { if (ocultas.includes(o)) return; texDe(o, t => usadas.add(t)); for (const h of o.children) recorrer(h); };
+  recorrer(scene); if (scene.environment) usadas.add(scene.environment);
+  for (const c of ocultas) c.traverse(o => texDe(o, t => { if (!usadas.has(t)) { t.dispose(); usadas.add(t); } }));
 }
 setCapa('caos', false); setCapa('espacio', false);
 
@@ -494,9 +524,19 @@ export const TIMES = {
   espacio: { n: 'espacio', top: 0x010208, bot: 0x02040c, fog: 0x000000, fn: 900, ff: 1000, sun: 0xffffff, si: 3.4, sp: [40, 20, 30], ht: 0x334466, hg: 0x000000, hi: .15, exp: 1.1, lamp: 0, stars: 2, env: .25, win: 0, hdri: 'dikhololo_night', rotE: 0, wet: 0, sv: 0, mv: 0, milky: 1.2, nebula: 1, nubes: 0, nubeC: 0, ciudad: 0, incendio: 0 }
 };
 // HDRI → PMREM, con caché (se cargan solo cuando hace falta cada hora)
-const hdriCache = new Map(), rgbe = new RGBELoader();
+const hdriCache = new Map(), rgbe = new RGBELoader(); let salaLibre = false;
+// el HDRI 1K se reduce a 512×256 antes del PMREM: mapa de entorno 384×512 (1,5 MB) en vez de 768×1024 (6 MB);
+// los reflejos ya son borrosos y de noche apenas se notan
+function mitadHDR(t) {
+  const { data: d, width: w, height: h } = t.image; if (!(d instanceof Uint16Array) || w < 1024) return;
+  const W = w >> 1, H = h >> 1, o = new Uint16Array(W * H * 4), f = THREE.DataUtils.fromHalfFloat;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const a = ((y * 2) * w + x * 2) * 4, b = a + w * 4, k = (y * W + x) * 4;
+    for (let c = 0; c < 4; c++) o[k + c] = THREE.DataUtils.toHalfFloat((f(d[a + c]) + f(d[a + 4 + c]) + f(d[b + c]) + f(d[b + 4 + c])) * .25); }
+  t.image = { data: o, width: W, height: H }; t.needsUpdate = true;
+}
 function cargarHDRI(id) {
-  if (!hdriCache.has(id)) hdriCache.set(id, new Promise(res => rgbe.load('assets/hdri/' + id + '_1k.hdr', t => { const e = pmrem.fromEquirectangular(t).texture; t.dispose(); res(e); }, undefined, () => res(null))));
+  if (!hdriCache.has(id)) hdriCache.set(id, new Promise(res => rgbe.load('assets/hdri/' + id + '_1k.hdr', t => { mitadHDR(t); const e = pmrem.fromEquirectangular(t).texture; t.dispose();
+    if (!salaLibre) { salaLibre = true; salaRT.dispose(); envSala = e; } /* la sala de reserva (6 MB) sobra en cuanto hay un HDRI */ res(e); }, undefined, () => res(null))));
   return hdriCache.get(id);
 }
 function ponerEntorno(T) {

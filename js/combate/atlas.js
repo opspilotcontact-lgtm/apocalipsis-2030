@@ -1,5 +1,5 @@
-// Atlas de heridas generado por código al arrancar (sin descargas): 1024×1024, 64 casillas de 128 px
-// (128 px por herida de 5-25 cm = 5-25 px/cm, de sobra incluso de cerca en VR; 4 MB en GPU).
+// Atlas de heridas generado por código al arrancar (sin descargas): 768×768, 64 casillas de 96 px
+// (96 px por herida de 5-25 cm = 4-19 px/cm; 3 MB en GPU con mipmaps, antes 1024/128 px = 5,3 MB).
 // Cada casilla NO guarda colores sino CAMPOS que el shader colorea según el tipo de superficie y la edad:
 //   R = relieve (0.5 neutro; <0.5 hundido, >0.5 hinchado)   → bump en el shader
 //   G = núcleo (agujero, corte, centro del moratón, progreso del goteo, alambres que brillan…)
@@ -10,7 +10,7 @@
 // Se genera en trozos (unas casillas por tarea) para no congelar el arranque en las Quest.
 import { THREE } from '../nucleo.js';
 
-export const TAM = 1024, CAS = 128, POR_FILA = TAM / CAS;
+export const TAM = 768, CAS = 96, POR_FILA = TAM / CAS;
 const datos = new Uint8Array(TAM * TAM * 4);
 export const atlas = new THREE.DataTexture(datos, TAM, TAM, THREE.RGBAFormat);
 atlas.generateMipmaps = true; atlas.minFilter = THREE.LinearMipmapLinearFilter; atlas.magFilter = THREE.LinearFilter;

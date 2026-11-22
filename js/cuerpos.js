@@ -1,6 +1,7 @@
 // Cuerpos: robots y humanos por código (mismo esqueleto, mismas animaciones) y modelos .glb estáticos.
-import { THREE, mix, clamp, std, glow, rbox, sphG, cylG, texScratch } from './nucleo.js';
+import { THREE, mix, clamp, std, glow, rbox, sphG, cylG, texScratch, ktx2 } from './nucleo.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 // ---------- Robots ----------
 const sharedM = new Map();
@@ -136,11 +137,15 @@ export function poseHerido(R, t) {
 export const staticPose = (R, st) => { for (let i = 0; i < 3; i++) animRig(R, 1, st); };
 
 // ---------- Modelos .glb (personajes texturizados sin esqueleto, vehículos y objetos del pack) ----------
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setKTX2Loader(ktx2).setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
 export const cargando = { n: 0 };
+// versión optimizada (<nombre>_ktx.glb: texturas KTX2 1024 + meshopt) con el original de respaldo
+const OPTIMIZADO = new Set(['Casco_Neural']);
+const cargar = ruta => new Promise((res, rej) => loader.load(ruta, g => res(g.scene), undefined, rej));
 export function modelo(nombre) {
-  if (!cache[nombre]) { cargando.n++; cache[nombre] = new Promise((res, rej) => loader.load(`assets/modelos/${nombre}.glb`, g => { cargando.n--; res(g.scene); }, undefined, e => { cargando.n--; rej(e); })); }
+  if (!cache[nombre]) { cargando.n++; const ruta = `assets/modelos/${nombre}.glb`;
+    cache[nombre] = (OPTIMIZADO.has(nombre) ? cargar(ruta.replace('.glb', '_ktx.glb')).catch(() => cargar(ruta)) : cargar(ruta)).finally(() => cargando.n--); }
   return cache[nombre];
 }
 // Devuelve un grupo con el modelo de pie, centrado en XZ, con los pies en y=0 y la altura pedida.

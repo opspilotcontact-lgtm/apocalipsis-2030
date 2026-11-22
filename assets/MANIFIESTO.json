@@ -587,6 +587,24 @@
       "fuente": "Poly Haven https://polyhaven.com/a/modern_coffee_table_01",
       "licencia": "CC0 1.0",
       "comercial": true
+    },
+    {
+      "path": "assets/modelos/Casco_Neural_ktx.glb",
+      "tipo": "prop estatico (derivado de assets/modelos/Casco_Neural.glb: texturas 2048 JPEG -> KTX2 1024 + meshopt con tools/finalizar.mjs --tam 1024)",
+      "uso": "casco neural del prologo (js/cuerpos.js lo carga primero; el original queda de respaldo)",
+      "bytes": 1239260,
+      "texturas": "KTX2 1024 (color/emisivo/ARM ETC1S, normal UASTC): ~7 MB en GPU frente a 106 MB del original",
+      "fuente": "Khronos glTF Sample Models, DamagedHelmet (mismo origen que Casco_Neural.glb)",
+      "licencia": "CC BY 4.0 (citar autor en CREDITOS antes de publicar)",
+      "comercial": true
+    },
+    {
+      "path": "assets/texturas/lienzos/*.ktx2",
+      "tipo": "lienzos del juego horneados (atlas de rotulos de js/mundo/decorado.js y fachadas de js/nucleo.js) con toktx 4.4.2; comando en docs/PLAN-MAESTRO.md seccion 9",
+      "uso": "sustituyen en la GPU al lienzo con el mismo id (hornearLienzo); ?lienzos=0 vuelve al lienzo",
+      "fuente": "generado por el propio codigo del juego (las fotos de ladrillo/enlucido son Poly Haven CC0)",
+      "licencia": "propia + CC0",
+      "comercial": true
     }
   ],
   "derivados_mixamo": {

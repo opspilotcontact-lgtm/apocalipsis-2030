@@ -1,5 +1,6 @@
 // Arranque: construye el mundo, monta el menú y el bucle principal (PC y VR comparten todo).
-import { THREE, V3, G, $, renderer, scene, camera, dolly, head, vm, sky, sun, sunDir, aplicarHora, hornear, actualizarLuces, labels, rnd } from './nucleo.js';
+import { conectarPerf } from './perf.js'; // primero: con ?stats engancha WebGL antes de la primera textura
+import { THREE, V3, G, $, renderer, scene, capas, camera, dolly, head, vm, sky, sun, sunDir, aplicarHora, hornear, actualizarLuces, labels, rnd } from './nucleo.js';
 import { actualizarFx, audio, dust, ambiente } from './fx.js';
 import { modelo } from './cuerpos.js';
 import { construirTierra } from './mundo/tierra.js';
@@ -76,6 +77,7 @@ window.__dbg = () => ({ cap: director.capIdx, paso: director.pasoIdx, tipo: dire
 window.__tp = (x, z, yaw = 0) => { import('./jugador.js').then(j => j.teleport(x, z, yaw)); };
 window.__look = (yaw, pitch) => { P.yaw = yaw; P.pitch = pitch; };
 window.__inmune = (on = true) => { P.inmune = on; };
+const tickPerf = conectarPerf(renderer, scene, capas); // window.__perf() → memoria de texturas, llamadas, triángulos
 
 document.fonts?.ready.then(() => { for (const l of labels) if (l.arg !== null) l.set(l.arg); });
 note(navigator.xr ? $('#vrNote').textContent : 'Listo.');
@@ -114,4 +116,5 @@ renderer.setAnimationLoop(() => {
   actualizarUI(dt, { hp: Math.max(0, Math.ceil(P.hp)), w: car.occupied ? 'Al volante' : P.sentado ? 'Sentado' : w.name, ammo: car.occupied ? Math.round(Math.abs(car.speed) * 3.6) + ' km/h' : w.melee ? '∞' : P.reloading > 0 ? 'Recargando…' : `${P.ammo[w.id]} · ${(P.cargadores?.[w.id] || []).length} carg.`, det: deteccion.activa || deteccion.v > 0 ? deteccion.v : 0, visto: deteccion.visto });
   actualizarJuego(dt); // sistemas de juego (js/juego): también hace el render a textura de las cámaras
   renderer.render(scene, camera);
+  tickPerf?.();
 });

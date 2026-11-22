@@ -4,7 +4,7 @@
 // llevan el color en cada vértice, así decenas de objetos distintos comparten una sola llamada de dibujo.
 // Las superficies libres (encimeras, mesas, estantes) se listan en `superficies` para que el sistema de
 // interacción ponga encima los objetos que se cogen.
-import { THREE, V3, M, std, glow, pieza, addCollider, B, zona, cv2d, toTex, canvasTex, fuenteLuz, rnd, rbox, markStatic, materialesVentana, texPBR, en } from '../nucleo.js';
+import { THREE, V3, M, std, glow, pieza, addCollider, B, zona, cv2d, toTex, canvasTex, fuenteLuz, rnd, rbox, markStatic, materialesVentana, texPBR, en, hornearLienzo } from '../nucleo.js';
 
 export const superficies = []; // { zona, x, y, z, w, d, ry } en coordenadas de mundo (centro de la cara superior)
 const supf = (x, y, z, w, d, ry = 0) => superficies.push({ zona: B.zona, x: x + B.ox, y, z: z + B.oz, w, d, ry });
@@ -88,7 +88,7 @@ cel('grafica', 1536, 768, 256, 256, (x, w, h) => { x.fillStyle = '#05080f'; x.fi
 cel('reloj', 1792, 768, 256, 256, (x, w, h) => { x.fillStyle = '#f8f8f4'; x.beginPath(); x.arc(128, 128, 120, 0, 7); x.fill(); x.strokeStyle = '#222'; x.lineWidth = 10; x.stroke(); for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; x.lineWidth = 6; x.beginPath(); x.moveTo(128 + Math.cos(a) * 95, 128 + Math.sin(a) * 95); x.lineTo(128 + Math.cos(a) * 110, 128 + Math.sin(a) * 110); x.stroke(); } x.lineWidth = 8; x.beginPath(); x.moveTo(128, 128); x.lineTo(128 + 50, 128 - 30); x.moveTo(128, 128); x.lineTo(128 - 10, 128 - 85); x.stroke(); });
 // anuncio de la marquesina
 cel('anuncio', 0, 672, 512, 352, (x, w, h) => { const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#0b1a3a'); g.addColorStop(1, '#3a0b2a'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = '#29e6ff'; x.font = fuente(46); x.fillText('LÁZARO SYSTEMS', 30, 90); x.fillStyle = '#fff'; x.font = fuente(26, 500); x.fillText('Tu ayudante R-7 desde 99 €/mes', 30, 140); x.fillStyle = 'rgba(200,220,255,.85)'; x.beginPath(); x.arc(380, 240, 70, 0, 7); x.fill(); x.fillStyle = '#0b1a3a'; x.fillRect(340, 225, 80, 14); x.fillStyle = '#ff3b1f'; x.fillRect(350, 228, 60, 8); x.fillStyle = '#ffcf6a'; x.font = fuente(22); x.fillText('«Nunca más solo»', 30, 300); });
-const atlasTex = toTex(atC, false); atlasTex.anisotropy = 8;
+const atlasTex = hornearLienzo(toTex(atC, false), 'atlas_decorado'); atlasTex.anisotropy = 8; // KTX2 horneado si existe (10,7 → ~2,7 MB)
 const rotulo = std({ map: atlasTex, roughness: .6, metalness: 0 });                                           // fotos, carteles (sin luz propia)
 const rotuloLuz = std({ map: atlasTex, emissiveMap: atlasTex, emissive: 0xffffff, emissiveIntensity: 1, roughness: .35 }); // rótulos y pantallas encendidas
 const escaparate = std({ map: atlasTex, emissiveMap: atlasTex, emissive: 0xffffff, emissiveIntensity: 1, roughness: .06, metalness: .2 });

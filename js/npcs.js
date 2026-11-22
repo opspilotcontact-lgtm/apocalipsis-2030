@@ -239,7 +239,7 @@ function actualizarColoso(dt) {
   const s = W.colosoBase; if (!s) return;
   if (!coloso.pedido) { coloso.pedido = true; prepararModelo('Coloso_animado').then(ok => { if (!ok || !s.parent) return;
     const A = crearCuerpo('Coloso_animado', { alto: 2.6, sinDanio: true }); A.root.position.copy(s.position); A.root.rotation.copy(s.rotation);
-    s.parent.add(A.root); s.visible = false; A.reproducir(A.clip('idle'), 0, .25); A.malla && (A.malla.frustumCulled = false); coloso.A = A; }); }
+    s.parent.add(A.root); s.visible = false; s.traverse(m => { if (m.isMesh) for (const k in m.material) if (m.material[k]?.isTexture) m.material[k].dispose(); }); /* libera la GPU del estático (~16 MB) */ A.reproducir(A.clip('idle'), 0, .25); A.malla && (A.malla.frustumCulled = false); coloso.A = A; }); }
   const A = coloso.A; if (!A) return;
   const pf = playerFeet(tH), d = Math.hypot(pf.x - A.root.position.x, pf.z - A.root.position.z);
   A.root.visible = d < 90; if (d > 45) return; // solo se anima de cerca
