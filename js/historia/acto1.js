@@ -8,7 +8,7 @@ import { sentarEn } from '../vehiculos.js';
 import { distraer } from '../enemigos.js';
 import { npcs } from '../npcs.js';
 import { instancia } from '../cuerpos.js';
-import { WOBJ } from '../jugador.js';
+import { clonarArma } from '../jugador.js';
 import { luzFx } from '../nucleo.js';
 
 const vr = () => G.mode === 'vr';
@@ -26,7 +26,7 @@ function piedra() {
   OB.piedra.visible = true; OB.piedra.position.set(25.5, .07, 77.2); return OB.piedra;
 }
 function rifle() {
-  if (!OB.rifle) { OB.rifle = WOBJ.x56d.g.clone(true); scene.add(OB.rifle); }
+  if (!OB.rifle) { OB.rifle = clonarArma('x56d'); scene.add(OB.rifle); }
   OB.rifle.visible = true; OB.rifle.position.set(-17.2, 1.06, -48.6); OB.rifle.rotation.set(0, Math.PI / 2, Math.PI / 2); return OB.rifle;
 }
 // cuadro pintado a mano en un canvas (provisional): foto de los hermanos y dibujo de Lucía

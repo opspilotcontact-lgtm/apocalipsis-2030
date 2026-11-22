@@ -42,7 +42,7 @@ function actualizarTorso(dt) {
 const fundas = {}; let ledM = {}, cargVis = [];
 function preparar() {
   const { WOBJ } = J;
-  const poner = (id, k, rot, off = [0, 0, 0]) => { if (!WOBJ[id]) return; const g = WOBJ[id].g.clone(); g.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.rotation.set(...rot); g.position.copy(RANURAS[k].p).add(new V3(...off)); g.visible = false; torso.add(g); fundas[id] = g; };
+  const poner = (id, k, rot, off = [0, 0, 0]) => { if (!WOBJ[id]) return; const g = J.clonarArma ? J.clonarArma(id, { sombra: false }) : WOBJ[id].g.clone(); g.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.rotation.set(...rot); g.position.copy(RANURAS[k].p).add(new V3(...off)); g.visible = false; torso.add(g); fundas[id] = g; };
   poner('x56d', 'espalda', [-Math.PI / 2 + .25, 0, .55], [-.05, -.12, .03]);
   poner('pistola', 'cadera', [Math.PI / 2, 0, 0], [0, .05, 0]);
   poner('cuchillo', 'pecho', [Math.PI / 2, 0, .7]);

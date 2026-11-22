@@ -10,8 +10,9 @@ import { actividades, construirActividades, actualizarActividades } from './acti
 import { npcIA, actualizarNpcIA } from './npcIA.js';
 import { guia, actualizarGuia, montarOpcion } from './guia.js';
 import { musica, actualizarMusica } from './musica.js';
+import { avatar, actualizarAvatar } from './avatar.js';
 
-export const juego = { ecos, camaras, linterna, actividades, npcIA, guia, musica };
+export const juego = { ecos, camaras, linterna, actividades, npcIA, guia, musica, avatar };
 const paso = (n, f) => { try { f(); } catch (e) { if (!paso[n]) { paso[n] = 1; console.warn('[juego] ' + n, e); } } };
 // main.js: después de construirInteraccion (el panel de Comodidad ya existe) y antes de hornear
 export function construirJuego() {
@@ -25,6 +26,7 @@ export function actualizarJuego(dt) {
   paso('musica', () => actualizarMusica(dt));
   if (!activo) return;
   paso('npcIA', () => actualizarNpcIA(dt));
+  paso('avatar', () => actualizarAvatar(dt)); // antes de las cámaras: el cuerpo de Dave sale en ellas
   paso('ecos', () => actualizarEcos(dt));
   paso('camaras', () => actualizarCamaras(dt));
   paso('linterna', () => actualizarLinterna(dt));

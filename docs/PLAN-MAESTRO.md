@@ -150,6 +150,15 @@ Personajes pendientes y fuente asignada: Mike (TRELLIS arreglado → rig) · Joh
 
 ## 9. Estado y próximos pasos (actualizar siempre)
 
+### Cola autónoma (22-nov noche, usuario ausente) — se ejecuta en orden, cada bloque cierra con commit
+- **A1 · Integración — HECHO 22-nov** (probado en PC, falta Quest): X-56D real (`assets/armas/X56D.glb`) en mano/visor PC/mostrador de Hank/funda vía `clonarArma(id)` en `jugador.js` (modelo por código hasta que carga; «Boca» = origen de balas y fogonazo; el cargador por código queda invisible para LEDs y recarga física). Hank = `Hank_animado` con ActorGLB en `npcs.js` (tipo `actor`: respira/mira nervioso/discute al hablar/señala/llora/sentado en el camión; herible por fuego amigo y robots a < 1,25 m, nunca baja de 1 hp). Cuerpo de Dave en `js/juego/avatar.js` (capa 6: invisible para la cámara principal y los ojos VR, visible en cámaras del lab y en 3.ª persona PC con **T** — la V ya era contener la respiración). Arreglado en `actor.js`: con `altura` la escala salía ×400 (piel sin matrices al medir) y la biblioteca con guiones bajos ahora casa con `ALIAS`. Pendiente: sombra propia del cuerpo, cuerpo en los ecos, cargador del .glb no se separa al recargar en VR, comprobar ángulo de la X-56D en el grip de Quest.
+- ~~**A1 · Integración** (código)~~: Dave como cuerpo del jugador (visible en cámaras de seguridad, ecos y 3ª persona PC), Hank animado con ActorGLB y clips sociales, X-56D real con anclas Empunadura/Boca en mano, funda y entrega de Hank.
+- **A2 · Assets** (Blender, en paralelo): auto-rig propio transfiriendo el esqueleto y los pesos de Dave (sin Mixamo) → Mike, Unidad 01, El Rey, Coloso; TRELLIS.2 con reintentos cuando haya cupo → John, Lena, R-7, escopeta Arda (y arreglo de pelo/cara).
+- **B · Pulido** (tras A1): exposición nocturna, memoria de texturas < 140 MB, cabina física de la ORION-4, enseñar esconderse/distraer en cap. 2, miembro arrancado con malla real, escasez de munición/botiquines por capítulo (F1.5).
+- **C · Integrar A2** (tras A2): Mike/John en sus escenas, Unidad 01 en su cápsula con esqueleto, R-7 real como enemigo con piezas rompibles, escopeta.
+- **Esperando al usuario**: prueba en Quest (túnel), decisión Hi3D de pago.
+
+
 **22-nov-2026, noche**
 - **Sistemas de juego (22-nov, agente sistemas)** HECHO en `js/juego/*` y probado en PC: ecos (3 de serie), cámaras del lab (render a textura + grabación R-01), linterna en el hombro con batería, básquet con el chaval + triples, gato y superviviente en ventana, IA de PNJ (rutina/seguir/huir/reaccionar/ayudar), guía visual (ámbar/cinta/cian/rojo + pista 60/120 s + guía clásica) y música adaptativa. APIs en `docs/eventos.md` §«Sistemas de juego». Sin probar en Quest: entrada VR de ecos, botones con el dedo, pases con la mano, coste del render a textura.
 - En curso: misiones jugables (agente historia) · ecos/cámaras/básquet/IA PNJ (agente sistemas) · Hank animado + 40 animaciones (agente Blender)

@@ -5,6 +5,8 @@ import { THREE, V3, G, angLerp, clamp, scene, groundAt } from './nucleo.js';
 import { makeHuman, makeRobot, animRig, poseHerido, instancia, holograma } from './cuerpos.js';
 import { playerFeet, playerHead } from './jugador.js';
 import { FICHAS } from './personajes/fichas.js';
+import { precargarActor, cargarClips, crearActor } from './combate/actor.js';
+import { enemies } from './enemigos.js';
 
 // ry: giro extra para que el frente del modelo mire a +Z · ficha: de dónde sale el porte y el gesto propio
 const DEF = {
@@ -28,13 +30,22 @@ const DEF = {
   nico: { tipo: 'rig', o: { camisa: 0x2a5a9a, pantalon: 0x2a2a30, piel: 0xd8a882, pelo: 0x2a1a10, mangaCorta: true, scale: .78 } },
   // R-7 que patrulla y escanea en una escena (no combate: es un actor)
   r7: { tipo: 'robot', o: { body: 0x4a4f57, dark: 0x1a1c20, accent: 0x8a1a12, eye: 0xff2a1a, antenna: true, scale: .95 } },
-  hank: { tipo: 'glb', ficha: 'hank', modelo: 'Hank', alto: 1.78, ry: 0 },
+  // Hank con esqueleto (ActorGLB + biblioteca de clips); si el .glb animado no carga, cae al estático 'Hank'
+  hank: { tipo: 'actor', ficha: 'hank', modelo: 'Hank_animado', alto: 1.78, glb: 'Hank', herible: true,
+    clips: { idle: 'Breathing_Idle', nervioso: 'Nervously_Look_Around', habla: 'Standing_Arguing', miedo: 'Sad_Idle', sentado: 'Sitting' } },
   unidad01: { tipo: 'glb', ficha: 'unidad01', modelo: 'Unidad01', alto: 1.85, ry: 0 },
   elrey: { tipo: 'glb', ficha: 'elrey', modelo: 'El_Rey', alto: 2.05, ry: 0 }
 };
 // aspecto de un humano (para que el director cree enemigos humanos con la misma cara que el NPC)
 export const aspecto = key => DEF[key]?.o || DEF.saqueador.o;
 export const npcs = {};
+// clips de la biblioteca que usan los PNJ con esqueleto (assets/personajes/anim)
+const CLIPS_PNJ = ['Breathing_Idle', 'Nervously_Look_Around', 'Standing_Arguing', 'Sad_Idle', 'Crying', 'Pointing', 'Head_Hit', 'Hit_Reaction', 'Big_Side_Hit', 'Talking_On_Phone', 'Sitting', 'Waving'];
+const listoActor = {};
+function prepararActor(d) { return listoActor[d.modelo] ||= Promise.all([precargarActor(d.modelo), cargarClips(CLIPS_PNJ)]).then(() => true).catch(e => { console.warn('[npcs] ' + d.modelo + ' no cargó; uso el modelo estático', e); return false; }); }
+prepararActor(DEF.hank); // en segundo plano desde el arranque
+// gesto (npcs.js) → clip de un disparo o bucle mientras dura
+const GESTO_CLIP = { senalar: ['Pointing', 1], llorar: ['Crying', 0], cabizbajo: ['Sad_Idle', 0], manos: ['Standing_Arguing', 0], encoger: ['Standing_Arguing', 0], telefono: ['Talking_On_Phone', 0], rendirse: ['Sad_Idle', 0] };
 
 // id: nombre único; def: clave en DEF (por defecto = id) · punto [x,z] · yaw (0 = mirando al sur, +Z)
 // o: { pose: 'pie'|'herido', mira: true (al jugador) | 'id' | [x,z] , holo: true, y, porte }
@@ -44,7 +55,11 @@ export async function npc(id, punto, yaw = 0, o = {}) {
   if (!n) {
     if (d.tipo === 'rig') { const R = makeHuman(d.o); n = { id, R, root: R.root, tipo: 'rig' }; if (d.holo) n.holoMat = holograma(R.root, d.holo); }
     else if (d.tipo === 'robot') { const R = makeRobot(d.o); n = { id, R, root: R.root, tipo: 'rig' }; if (d.holo) { n.holoMat = holograma(R.root, d.holo); R.root.traverse(m => { if (m.isMesh) m.userData.enemy = null; }); } }
-    else { const g = await instancia(d.modelo, d.alto, { ry: d.ry }); n = { id, g, root: g, tipo: 'glb', inner: g.children[0] }; }
+    else if (d.tipo === 'actor' && await prepararActor(d)) {
+      const A = crearActor(d.modelo, { altura: d.alto, resDanio: 512 }); n = { id, A, root: A.root, tipo: 'actor', hp: 100, miedoT: 0, golpeT: 0, herible: !!d.herible, clips: d.clips || {} };
+      for (const m of A.hit) m.userData.npcId = id;
+    }
+    else { const g = await instancia(d.glb || d.modelo, d.alto, { ry: d.ry || 0 }); n = { id, g, root: g, tipo: 'glb', inner: g.children[0] }; }
     npcs[id] = n; scene.add(n.root);
     const f = FICHAS[d.ficha || key] || {};
     n.porte = f.porte || 'firme'; n.tic = f.gestoTic || null;
@@ -56,6 +71,7 @@ export async function npc(id, punto, yaw = 0, o = {}) {
   if (o.porte) n.porte = o.porte;
   n.root.visible = true; n.root.position.set(punto[0], o.y ?? groundAt(punto[0], punto[1], 3), punto[1]); n.root.rotation.set(0, yaw, 0); n.yawBase = yaw;
   if (n.inner) n.inner.rotation.set(0, n.inner.rotation.y, 0);
+  if (n.tipo === 'actor') { n.hp = 100; n.miedoT = 0; }
   if (o.holo && n.tipo === 'glb' && !n.holoMat) n.holoMat = holograma(n.g);
   return n;
 }
@@ -71,7 +87,18 @@ export function caminarA(id, punto, vel = 1.4) {
 // a quién mira: 'jugador' | id de otro NPC | [x,z] | [x,y,z] | V3 | null (al frente)
 export function mirarA(id, obj) { const n = npcs[id]; if (n) n.mirar = obj === true ? 'jugador' : obj || null; }
 // gestos: senalar · negar · asentir · encoger · manos · nuca · brazos · abrazar · rendirse · apuntar · cabizbajo · llorar · telefono
-export function gesto(id, tipo, dur = 2.2) { const n = npcs[id]; if (n) n.gesto = { tipo, t: 0, dur }; }
+export function gesto(id, tipo, dur = 2.2) { const n = npcs[id]; if (n) { n.gesto = { tipo, t: 0, dur }; const c = GESTO_CLIP[tipo]; if (n.A && c?.[1]) n.A.unDisparo(c[0], .2); } }
+
+// ---------- PNJ heribles (ActorGLB): fuego amigo y robots cerca. Nunca mueren: la historia los necesita ----------
+const tH = new V3();
+export function herirNpc(id, dmg, punto, dir, zona = 'torso', tipo = 'bala') {
+  const n = npcs[id]; if (!n?.A || !n.root.visible || !n.herible) return;
+  n.hp = Math.max(1, n.hp - dmg); n.miedoT = 6; n.golpeT = .6;
+  n.A.reaccion(zona) || n.A.unDisparo(zona === 'head' ? 'Head_Hit' : 'Hit_Reaction', .08);
+  if (punto && dir) n.A.herida(punto, dir, tipo, dmg);
+}
+G.herirNpc = herirNpc;
+G.npcHit = () => { const t = []; for (const id in npcs) { const n = npcs[id]; if (n.A && n.herible && n.root.visible) for (const m of n.A.hit) t.push(m); } return t; };
 
 // ---------- objetivo de la mirada ----------
 const tA = new V3(), tB = new V3();
@@ -163,7 +190,8 @@ export function actualizarNpcs(dt, hablante) {
     const cruzar = (n.porte === 'quieto' || n.tic === 'brazos') && !habla && !n.destino && !n.gesto && n.pose !== 'herido';
     n.cruce += ((cruzar ? 1 : 0) - n.cruce) * Math.min(1, dt * 1.5);
 
-    if (n.tipo === 'rig') {
+    if (n.tipo === 'actor') actualizarActor(n, dt, spd, habla, pm, gt, gtt, gw);
+    else if (n.tipo === 'rig') {
       quitarOff(n);
       if (n.pose === 'herido') poseHerido(n.R, G.time); else animRig(n.R, dt, { spd, habla });
       const off = { 'neck.y': n.cab.y, 'neck.x': n.cab.x * (n.pose === 'herido' ? .4 : 1) };
@@ -185,4 +213,29 @@ export function actualizarNpcs(dt, hablante) {
       if (n.holoMat) n.holoMat.opacity = .22 + Math.random() * .12 + (Math.sin(G.time * 30) > .9 ? .2 : 0);
     }
   }
+}
+
+// ---------- PNJ con esqueleto (ActorGLB): clip según lo que hace + capa procedural del actor (mirar, dolor) ----------
+function actualizarActor(n, dt, spd, habla, pm, gt, gtt, gw) {
+  const A = n.A, C = n.clips;
+  n.miedoT = Math.max(0, n.miedoT - dt); n.golpeT = Math.max(0, n.golpeT - dt);
+  // un robot vivo pegado a él le hace daño (escolta): golpe cada 1,4 s
+  if (n.herible && n.root.visible) for (const e of enemies) { if (!e.alive || e.downT > 0) continue;
+    if (Math.hypot(e.pos.x - n.root.position.x, e.pos.z - n.root.position.z) < 1.25 && (n.golpeRobT = (n.golpeRobT || 0) - dt) <= 0) { n.golpeRobT = 1.4; herirNpc(n.id, 7, tH.copy(n.root.position).setY(n.root.position.y + 1.3), tH.clone().sub(e.pos).setY(0).normalize(), 'torso', 'contundente'); } }
+  let clip, ts = 1;
+  const sentado = n.root.parent !== scene && n.root.parent?.type !== 'Scene';
+  if (sentado && A.tieneClip(C.sentado)) clip = C.sentado;
+  else if (spd > .15) { clip = A.clip('walk'); ts = clamp(spd / A.velClip(clip), .5, 2); }
+  else if (gt && GESTO_CLIP[gt] && !GESTO_CLIP[gt][1] && A.tieneClip(GESTO_CLIP[gt][0])) clip = GESTO_CLIP[gt][0];
+  else if (n.miedoT > 0 || n.hp < 35 || n.pose === 'herido') clip = n.hp < 35 && A.tieneClip('Crying') ? 'Crying' : C.miedo;
+  else if (habla) clip = C.habla;
+  else if (n.porte === 'nervioso' || n.porte === 'inquieto') clip = (Math.floor((G.time + n.fase * 3) / 9) % 2) ? C.nervioso : C.idle;
+  else clip = C.idle;
+  if (!clip || !A.tieneClip(clip)) clip = A.clip('idle');
+  A.reproducir(clip, .35, ts); if (A.actual) A.actual.timeScale = ts;
+  A.mixer.update(dt); A.raiz.updateMatrixWorld(true);
+  A.fase += dt * (spd > .15 ? 5 * clamp(spd / 1.6, .6, 2) : 0);
+  A.capa(dt, { mirar: pm ? tH.copy(pm) : null, aturdido: n.golpeT > 0 ? n.golpeT : 0 });
+  // asentir / negar con la cabeza (no hay clip)
+  const nk = A.H.Neck; if (nk && gt && gw > 0) { if (gt === 'asentir') nk.rotation.x += Math.sin(gtt * 8) * .18 * gw; if (gt === 'negar') nk.rotation.y += Math.sin(gtt * 9) * .3 * gw; nk.updateMatrixWorld(true); }
 }

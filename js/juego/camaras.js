@@ -20,7 +20,7 @@ export const CAMARAS = [
   { id: 3, nombre: 'LAB · VITRINA', pos: [3.2, 3.3, -136.8], mira: [0, 1.1, -142] },
   { id: 4, nombre: 'RECINTO · PUERTA', pos: [21.5, 7.6, -123], mira: [0, .5, -118] }
 ];
-const cam = new THREE.PerspectiveCamera(70, W / H, .1, 80); cam.layers.enable(CAPA);
+const cam = new THREE.PerspectiveCamera(70, W / H, .1, 80); cam.layers.enable(CAPA); cam.layers.enable(6); // 6 = cuerpo del jugador (avatar.js)
 const rt = new THREE.WebGLRenderTarget(W, H, { depthBuffer: true }); rt.texture.colorSpace = THREE.SRGBColorSpace;
 const estado = { id: 1, grab: false, t: 0, acum: 0, mirando: false, encendida: false };
 

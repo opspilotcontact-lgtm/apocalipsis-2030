@@ -18,7 +18,7 @@ import { construirJuego, actualizarJuego } from './juego/index.js';
 const note = m => { const el = $('#vrNote'); if (el) el.textContent = m; };
 note('Construyendo el mundo…');
 // precarga de modelos en segundo plano (evita tirones al empezar cada capítulo)
-for (const n of ['Hank', 'Unidad01', 'El_Rey', 'Casco_Neural']) modelo(n).catch(() => {});
+for (const n of ['Unidad01', 'El_Rey', 'Casco_Neural']) modelo(n).catch(() => {});
 await construirTierra();
 await construirInteraccion(); // objetos, muebles, cristales, pickup por dentro (antes de hornear: lo fijo se fusiona)
 construirJuego(); // ecos, cámaras, linterna, actividades, guía, música (js/juego)

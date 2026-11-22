@@ -24,6 +24,8 @@ function cargador() {
   const ktx = new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/').detectSupport(renderer);
   return loader = new GLTFLoader().setKTX2Loader(ktx).setMeshoptDecoder(MeshoptDecoder);
 }
+// cualquier .glb del proyecto (armas, props) con el mismo cargador KTX2 + meshopt
+export const cargarGLB = ruta => cargador().loadAsync(ruta);
 // ---------- Modelos y clips ----------
 const modelos = new Map();   // nombre → Promise<base>
 const base = new Map();      // nombre → { escena, clips: Map, vel: Map }
@@ -45,7 +47,9 @@ export function cargarClips(nombres, carpeta = 'assets/personajes/anim') {
     if (clipsExtra.has(n)) return true;
     if (!pedidos.has(n)) pedidos.set(n, cargador().loadAsync(`${carpeta}/${encodeURIComponent(n)}.glb`).then(g => {
       const c = g.animations[0]; if (!c) return false; c.name = n;
-      clipsExtra.set(n, { clip: c, vel: g.parser.json.animations?.[0]?.extras?.velocidad_raiz_mps || 0 }); return true;
+      const e = { clip: c, vel: g.parser.json.animations?.[0]?.extras?.velocidad_raiz_mps || 0 };
+      // la biblioteca usa guiones bajos (Head_Hit); ALIAS y el código antiguo, espacios (Head Hit): valen los dos
+      clipsExtra.set(n, e); clipsExtra.set(n.replace(/_/g, ' '), e); return true;
     }).catch(() => false));
     return pedidos.get(n);
   }));
@@ -127,7 +131,7 @@ export class ActorGLB {
     const B = base.get(nombre); if (!B) throw new Error('ActorGLB: precarga primero ' + nombre);
     this.nombre = nombre; this.B = B;
     this.root = new THREE.Group(); this.raiz = SkeletonUtils.clone(B.escena); this.root.add(this.raiz);
-    if (o.altura) { const bb = new THREE.Box3().setFromObject(this.raiz); this.raiz.scale.multiplyScalar(o.altura / (bb.max.y - bb.min.y)); }
+    if (o.altura) { this.raiz.updateMatrixWorld(true); this.raiz.traverse(x => { if (x.isSkinnedMesh) { x.skeleton.update(); x.boundingBox = null; } }); const bb = new THREE.Box3().setFromObject(this.raiz); /* sin matrices al día la piel mide ~0 y la escala se dispara */this.raiz.scale.multiplyScalar(o.altura / (bb.max.y - bb.min.y)); }
     this.escala = this.raiz.scale.x;
     this.raiz.traverse(x => { if (x.isMesh) { x.castShadow = true; x.receiveShadow = true; x.frustumCulled = false; } });
     this.H = huesosMixamo(this.raiz); this.malla = null; this.raiz.traverse(x => { if (x.isSkinnedMesh && !this.malla) this.malla = x; });

@@ -8,6 +8,7 @@ import { registrarJugador, lesionar, actualizarLesiones, reiniciarLesiones, fact
 import { say, ui } from './ui.js';
 import { director } from './historia/director.js';
 import { emitirRuido } from './interaccion/ruido.js';
+import { cargarGLB } from './combate/actor.js';
 import './interaccion/opciones.js'; // G.opciones (comodidad) antes de que nada las lea
 export { say };
 
@@ -25,10 +26,10 @@ export const WEAPONS = {
 };
 const WM = { gun: std({ color: 0x3a3f47, metalness: .8, roughness: .35, roughnessMap: texScratch }), dark: std({ color: 0x14161a, metalness: .5, roughness: .6 }), steel: std({ color: 0xb8bec6, metalness: .95, roughness: .2 }), wood: std({ color: 0x4a2f1c, roughness: .8 }), roca: std({ color: 0x6e6a62, roughness: .95, flatShading: true }), glow: glow(0x2fb6ff, 3), holo: glow(0xff3b1f, 4), skin: std({ color: 0xc89a78, roughness: .7 }) };
 function makeWeapon(id) {
-  const g = new THREE.Group(), muzzle = new THREE.Object3D(), tip = new THREE.Object3D();
+  const g = new THREE.Group(), muzzle = new THREE.Object3D(), tip = new THREE.Object3D(); muzzle.name = 'boca'; tip.name = 'punta';
   const b = (w, h, d, m, x, y, z, rx = 0) => { const me = new THREE.Mesh(rbox(w, h, d), m); me.position.set(x, y, z); me.rotation.x = rx; g.add(me); return me; };
   const c = (r, l, m, x, y, z) => { const me = new THREE.Mesh(cylG(r, l), m); me.rotation.x = Math.PI / 2; me.position.set(x, y, z); g.add(me); };
-  if (id === 'x56d') { b(.05, .08, .34, WM.gun, 0, .05, -.14); c(.013, .3, WM.dark, 0, .06, -.46); b(.042, .065, .22, WM.dark, 0, .03, .13); g.userData.cargador = b(.03, .12, .05, WM.dark, 0, -.04, -.15, .15); b(.032, .1, .045, WM.dark, 0, -.02, 0, .25); b(.055, .05, .16, WM.dark, 0, .045, -.38);
+  if (id === 'x56d') { b(.05, .08, .34, WM.gun, 0, .05, -.14); c(.013, .3, WM.dark, 0, .06, -.46); b(.042, .065, .22, WM.dark, 0, .03, .13); g.userData.cargador = b(.03, .12, .05, WM.dark, 0, -.04, -.15, .15); g.userData.cargador.name = 'cargador'; b(.032, .1, .045, WM.dark, 0, -.02, 0, .25); b(.055, .05, .16, WM.dark, 0, .045, -.38);
     b(.03, .04, .06, WM.dark, 0, .11, -.1); const ring = new THREE.Mesh(new THREE.TorusGeometry(.018, .003, 6, 16), WM.holo); ring.position.set(0, .13, -.1); g.add(ring); muzzle.position.set(0, .06, -.62); }
   if (id === 'pistola') { b(.032, .036, .19, WM.gun, 0, .045, -.05); b(.03, .1, .045, WM.dark, 0, -.015, .03, .2); b(.006, .012, .02, WM.dark, 0, .07, -.13); g.userData.cargador = b(.024, .03, .034, WM.steel, 0, -.07, .045, .2); muzzle.position.set(0, .045, -.15); }
   if (id === 'escopeta') { c(.016, .5, WM.dark, .017, .055, -.36); c(.016, .5, WM.dark, -.017, .055, -.36); b(.07, .07, .2, WM.wood, 0, .03, -.05); b(.06, .05, .16, WM.wood, 0, .03, -.3); b(.045, .1, .26, WM.wood, 0, -.01, .19, -.15); muzzle.position.set(0, .055, -.62); }
@@ -37,6 +38,35 @@ function makeWeapon(id) {
   g.add(muzzle, tip); return { g, muzzle, tip };
 }
 export const WOBJ = Object.fromEntries(Object.keys(WEAPONS).map(k => [k, makeWeapon(k)]));
+// ---------- Armas reales (.glb, KTX2 + meshopt) ----------
+// Origen = empty «Empunadura» (la mano), cañón hacia -Z, «Boca» = origen de balas, trazadoras y fogonazo.
+// Hasta que carga se ve el modelo por código; las copias (mostrador de Hank, funda) se visten al llegar.
+const GLB_ARMAS = { x56d: 'assets/armas/X56D.glb' };
+const armaReal = {}, pendientes = [];
+const matOculto = new THREE.MeshBasicMaterial({ visible: false });
+function vestir(g, id) {
+  const R = armaReal[id]; if (!R || g.userData.real) return g;
+  for (const c of g.children) if (c.isMesh) { if (c.name === 'cargador') c.material = matOculto; else c.visible = false; } // el cargador queda (LEDs, recarga física)
+  const m = R.escena.clone(true); m.position.copy(R.emp).negate(); m.name = 'modeloReal';
+  const sombra = !g.userData.sinSombra; m.traverse(x => { if (x.isMesh) { x.castShadow = sombra; x.receiveShadow = true; } });
+  g.add(m); g.userData.real = true;
+  const boca = g.getObjectByName('boca'); if (boca && R.boca) boca.position.copy(R.boca);
+  return g;
+}
+// copia de un arma que se viste con el .glb en cuanto llega (o: { sombra: false })
+export function clonarArma(id, o = {}) {
+  const g = WOBJ[id].g.clone(true); if (o.sombra === false) { g.userData.sinSombra = true; g.traverse(x => { if (x.isMesh) x.castShadow = false; }); }
+  if (armaReal[id]) vestir(g, id); else if (GLB_ARMAS[id]) pendientes.push([g, id]);
+  return g;
+}
+setTimeout(() => { for (const id in GLB_ARMAS) cargarGLB(GLB_ARMAS[id]).then(gl => {
+  gl.scene.updateMatrixWorld(true); const emp = new V3(), e = gl.scene.getObjectByName('Empunadura'), b = gl.scene.getObjectByName('Boca');
+  if (e) e.getWorldPosition(emp);
+  armaReal[id] = { escena: gl.scene, emp, boca: b ? b.getWorldPosition(new V3()).sub(emp) : null };
+  vestir(WOBJ[id].g, id); for (const [g, k] of pendientes.splice(0)) vestir(g, k);
+  if (id === 'x56d') VMPOS.x56d = [.15, -.29, -.33, 0, .03, 0]; // la boca del .glb va 9 cm más alta que la del modelo por código
+  if (P.w === id) attachWeapon();
+}).catch(err => console.warn('[armas] ' + id + ' .glb no cargó, sigo con el modelo por código', err)); }, 0);
 const VMPOS = { x56d: [.17, -.21, -.36, 0, .03, 0], escopeta: [.16, -.22, -.34, 0, .03, 0], pistola: [.17, -.2, -.4, 0, 0, 0], piedra: [.24, -.25, -.45, .3, 0, 0], cuchillo: [.24, -.24, -.42, .9, .2, -.3], punos: [0, 0, 0, 0, 0, 0] };
 const fistsVM = new THREE.Group(); vm.add(fistsVM);
 const fists = [1, -1].map(sd => { const f = new THREE.Group(); f.add(new THREE.Mesh(rbox(.085, .085, .12), WM.skin)); f.position.set(.2 * sd, -.24, -.42); f.userData.rest = f.position.clone(); fistsVM.add(f); return f; });
@@ -124,7 +154,7 @@ function restaurarAgarre(u) { if (!u.home) return; u.home.par.add(u.mesh); u.mes
 
 // ---------- Disparo y golpes ----------
 const ray = new THREE.Raycaster();
-const targets = () => envActivo().concat(enemyMeshes(), corpseMeshes());
+const targets = () => envActivo().concat(enemyMeshes(), corpseMeshes(), G.npcHit?.() || []); // G.npcHit: PNJ heribles (npcs.js)
 function muzzleRay(o, d) { const w = WOBJ[P.w]; w.muzzle.getWorldPosition(o); w.muzzle.getWorldQuaternion(tQ); d.set(0, 0, -1).applyQuaternion(tQ); }
 // tipo: 'bala' | 'contundente' | 'corte' | 'escopeta' (por defecto, el del arma equipada)
 // extra (opcional): { swing: V3 } dirección del tajo (cortes orientados a lo largo del movimiento)
@@ -132,6 +162,7 @@ export function applyHit(obj, point, d, dmg, melee, tipo, extra = {}) {
   const u = obj.userData; tipo ||= WEAPONS[P.w].tipo || (melee ? 'contundente' : 'bala');
   const z = u.zona, mult = melee ? 1 : z === 'head' ? 2 : z === 'neck' ? 1.6 : u.part === 'arm' || u.part === 'leg' ? .75 : 1;
   if (u.enemy) { damageEnemy(u.enemy, dmg * mult, point, d, u.part, melee, u.limb, { zona: z, tipo, malla: obj, swing: extra.swing }); return true; }
+  if (u.npcId) { G.herirNpc?.(u.npcId, dmg * mult, point, d, z, tipo); return true; } // fuego amigo: Hank se queja, no muere
   if (u.cadaver) { golpearCadaver(u.cadaver, { dmg: dmg * mult, punto: point, dir: d, zona: z, tipo, malla: obj, swing: extra.swing }); return true; }
   if (u.prop?.golpe) return u.prop.golpe(point, d, dmg, tipo) !== false; // objetos de la interacción (botellas, cristales…)
   return false;
