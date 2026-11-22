@@ -186,7 +186,9 @@ const ray = new THREE.Raycaster();
 export function actualizarSigilo(dt) {
   actualizarOidoGuardias();
   if (!guardias.length && !focos.length && !hayPatrullas()) return;
-  const ph = playerHead(tA), pf = playerFeet(tB); let visto = false;
+  const ph = playerHead(tA), pf = playerFeet(tB); let visto = false, ganancia = 0;
+  // justicia del sigilo: agacharse/tumbarse (G.sigilo.visibilidad) y la distancia frenan el medidor; escondido no te ven
+  const vis = G.sigilo ? (G.sigilo.escondido ? 0 : clamp(G.sigilo.visibilidad ?? 1, 0, 1)) : 1;
   for (const g of guardias) {
     const R = g.R; let spd = 0, yaw = R.root.rotation.y;
     if (g.objetivo) {
@@ -205,24 +207,25 @@ export function actualizarSigilo(dt) {
     // ¿ve al jugador?
     if (!deteccion.activa || P.sentado) { g.ve = false; continue; }
     tC.set(ph.x - g.pos.x, 0, ph.z - g.pos.z); const d = tC.length();
-    if (d < 1.4) { g.ve = true; visto = true; continue; }
+    if (vis <= 0) { g.ve = false; continue; }
+    if (d < 1.4) { g.ve = true; visto = true; ganancia = Math.max(ganancia, 2); continue; }
     if (d > VISTA) { g.ve = false; continue; }
     const fwdx = Math.sin(R.root.rotation.y), fwdz = Math.cos(R.root.rotation.y), cos = (tC.x * fwdx + tC.z * fwdz) / d;
     if (cos < Math.cos(ANG)) { g.ve = false; continue; }
     g.losT -= dt; if (g.losT <= 0) { g.losT = .2; const eye = new V3(g.pos.x, g.pos.y + 1.6, g.pos.z), dir = new V3().subVectors(ph, eye); const L = dir.length(); ray.set(eye, dir.normalize()); ray.far = L - .3; g.los = ray.intersectObjects(envActivo(), false).length === 0; }
-    g.ve = g.los; if (g.ve) visto = true;
+    g.ve = g.los; if (g.ve) { visto = true; ganancia = Math.max(ganancia, (d < 4 ? 1.3 : 1.3 - (d - 4) / (VISTA - 4) * .7) * Math.max(.35, vis)); } // ~0,8 s a quemarropa, ~1,7 s a 10 m de pie, ~4,5 s tumbado
   }
   for (const f of focos) {
     if (f.objetivo) f.punto.lerp(tC.set(f.objetivo.x, 0, f.objetivo.z), Math.min(1, dt * 1.5));
     else { f.t += dt * f.vel; const n = f.ruta.length - 1, u = (Math.sin(f.t) * .5 + .5) * n, i = Math.min(n - 1, Math.floor(u)), k = u - i; f.punto.set(mix(f.ruta[i][0], f.ruta[i + 1][0], k), 0, mix(f.ruta[i][1], f.ruta[i + 1][1], k)); }
     f.punto.y = .05; f.mancha.position.copy(f.punto);
     f.haz.position.copy(f.origen); const L = f.origen.distanceTo(f.punto); f.haz.scale.set(1, 1, L); f.haz.lookAt(f.punto);
-    if (deteccion.activa && !P.sentado && Math.hypot(pf.x - f.punto.x, pf.z - f.punto.z) < f.r * .9) visto = true;
+    if (deteccion.activa && !P.sentado && vis > 0 && Math.hypot(pf.x - f.punto.x, pf.z - f.punto.z) < f.r * .9) { visto = true; ganancia = Math.max(ganancia, Math.max(.6, vis)); }
   }
-  if (deteccion.activa && robotsTeVen()) visto = true; // los R-7 que patrullan también cuentan para el medidor
+  if (deteccion.activa && robotsTeVen()) { visto = true; ganancia = Math.max(ganancia, 1); } // los R-7 que patrullan también cuentan para el medidor
   if (!deteccion.activa) return;
   deteccion.visto = visto;
-  deteccion.v = clamp(deteccion.v + (visto ? dt * 1.1 : -dt * .45), 0, 1);
+  deteccion.v = clamp(deteccion.v + (visto ? dt * 1.1 * ganancia : -dt * .45), 0, 1);
   deteccion.avisoT -= dt; if (visto && deteccion.avisoT <= 0) { deteccion.avisoT = 1; sfx('alerta'); }
   if (deteccion.v >= 1) { deteccion.activa = false; sfx('visto'); director.fallo('¡TE HAN VISTO!'); }
 }

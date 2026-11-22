@@ -43,8 +43,12 @@ function marcar(p, siempre = false) { if (!p) { marca.visible = false; marcaPos 
 const PISTA = { ir: 'Tengo que moverme. Por ahí.', usar: 'Hay algo aquí que puedo coger.', evento: 'Piensa, Dave. Mira alrededor.', mirar: 'Algo me llama la atención por aquí.', subir: 'La pickup. Vamos.', grabacion: 'Esa grabadora parpadea.', sigilo: 'Por delante no. Tiene que haber otra forma de entrar.' };
 function ayuda(dir, p, t) {
   if (!['ir', 'usar', 'evento', 'mirar', 'subir', 'grabacion', 'sigilo'].includes(p.t)) return;
-  if (t > 60 && !dir.ayuda1) { dir.ayuda1 = true; const g = G.guia || W.guia || window.__guia;
-    if (g?.resaltar) { try { g.resaltar(p.resaltar || p.id || p.nombre || marcaPos); } catch (e) {} } else if (marcaPos) marca.visible = true; }
+  if (t > 60 && !dir.ayuda1) { dir.ayuda1 = true; const g = G.guia || W.guia || window.__guia || window.__juego?.guia;
+    // objetivo del resaltado: el que diga el paso, el marcador o lo que hay que mirar (antes se pasaba un id que la guía no entiende)
+    let obj = p.resaltar || (marcaPos ? [marcaPos.x, marcaPos.z] : p.t === 'mirar' ? dir.objetivoMirada(p.a)?.clone?.() : null);
+    if (typeof obj === 'function') obj = obj(API);
+    let asa = null; if (g?.resaltar && obj) { try { asa = g.resaltar(obj); } catch (e) {} }
+    if (asa) dir.asaGuia = { g, asa }; else if (marcaPos) marca.visible = true; }
   if (t > 120 && !dir.ayuda2) { dir.ayuda2 = true; const txt = typeof p.pista === 'function' ? p.pista(API) : p.pista || PISTA[p.t]; if (txt) dir.cola.push({ n: 'DAVE', t: txt }); }
 }
 
@@ -169,10 +173,12 @@ export const director = {
   // ---------- pasos ----------
   irAPaso(i) {
     const pasos = this.cap.pasos; this.pasoIdx = i; this.paso = pasos[i]; this.t = 0; this.hablante = null; G.enDialogo = false; this.cortarLinea(); this.cerrarEleccion();
+    if (this.asaGuia) { try { this.asaGuia.g.quitar?.(this.asaGuia.asa); } catch (e) {} this.asaGuia = null; }
     const p = this.paso; if (!p) return this.terminarCap(); this.ayuda1 = this.ayuda2 = false;
     if (p.si && !p.si(memoria, API)) return this.irAPaso(i + 1);
     if (p.cp) this.cp = { pasoIdx: i, inv: [...P.inv], w: P.w, carg: JSON.stringify(P.cargadores || {}), ammo: { ...P.ammo }, punto: p.cp.punto, rehacer: p.cp.rehacer };
     if (p.obj) { const o = typeof p.obj === 'function' ? p.obj(API) : p.obj; ui.objetivo(o); G.objetivoDave = p.dave || o; sfx('objetivo'); }
+    else if (['dialogo', 'escena', 'eleccion', 'fundido'].includes(p.t) && !p.libre) ui.objetivo(''); // no dejar en pantalla un objetivo ya cumplido durante una conversación
     const tok = this.token;
     const sig = () => { if (tok === this.token && this.paso === p) this.avanzar(); };
     switch (p.t) {
@@ -208,6 +214,8 @@ export const director = {
         // zona segura: grabadora / diario. Guarda el capítulo y deja aquí el punto de control (sin parar la historia)
         const pos = p.pos || punto(p.a);
         usable({ id: 'guardar-' + (p.id || i), pos, r: p.r || 1.8, label: p.label || 'Guardar (grabadora)', alto: p.alto, on: () => {
+          // la historia ya siguió (p. ej. volver a casa a mitad del cap. 5): guardar aquí rebobinaría el capítulo
+          if (this.cap.pasos.slice(i + 1, this.pasoIdx).some(q => q.t === 'conducir' || q.t === 'viaje')) { quitarUsable('guardar-' + (p.id || i)); say('Ahora no es momento'); return; }
           this.cp = { pasoIdx: i + 1, inv: [...P.inv], w: P.w, carg: JSON.stringify(P.cargadores || {}), ammo: { ...P.ammo }, punto: p.punto || this.cp?.punto, rehacer: p.rehacer };
           this.guardar(this.capIdx); try { localStorage.setItem('apoc2030.guardado', JSON.stringify({ cap: this.capIdx, paso: i + 1 })); } catch (e) {}
           sfx('pickup'); say('Partida guardada'); } });
@@ -499,6 +507,7 @@ export const API = {
   pantallas(lineas, alerta = false) { for (const s of W.pantallas) s.set({ l: lineas, alerta }); },
   barreraLab(abierta) { if (!W.barreraLab) return; W.barreraLab.m.visible = !abierta; W.barreraLab.c.top = abierta ? 0 : 1.1; },
   robots(lista) { for (const [x, z, o] of lista) spawn('r7', x, z, o || {}); },
+  despejar: () => limpiarEnemigos(), // quita los robots que quedaron atrás (los del camino al llegar a un sitio con escenas)
   humanos(lista) { for (const [x, z, o] of lista) crearHumano(x, z, o || {}); },
   cinematica,
   // líneas que suenan sin parar el juego (se oyen cuando no hay diálogo): [['SARAH', '…'], …]

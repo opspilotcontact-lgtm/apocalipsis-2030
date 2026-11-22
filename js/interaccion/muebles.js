@@ -9,7 +9,7 @@ import { buzz } from '../fx.js';
 import { chirrido, portazo, deslizar } from './sonido.js';
 import { cuerpoFijo, cuerpoCinematico, moverCinematico, alListo } from './fisica-adaptador.js';
 import { registrar, raiz, crearProp } from './objetos.js';
-import { emitirRuido } from './ruido.js';
+import { emitirRuido, eventoHistoria } from './ruido.js';
 
 const MM = { madera: new THREE.MeshStandardMaterial({ color: 0x8a6440, roughness: .7 }), blanco: new THREE.MeshStandardMaterial({ color: 0xe8e8e2, roughness: .35 }), metal: new THREE.MeshStandardMaterial({ color: 0x5a6470, roughness: .45, metalness: .7 }), tirador: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: .25, metalness: .95 }), dentro: new THREE.MeshStandardMaterial({ color: 0x2a2620, roughness: .9 }), luzNevera: new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xeaf4ff, emissiveIntensity: 0 }) };
 export const muebles = [];
@@ -84,6 +84,7 @@ export function crearCajon(o) {
         if (c.e <= 0) { if (c.vel < -.4) portazo(tir.getWorldPosition(tP), .35); c.e = 0; c.vel = 0; }
         if (c.e >= max) { if (c.vel > .4) portazo(tir.getWorldPosition(tP), .25); c.e = max; c.vel = 0; }
       }
+      const ab = c.abierto(); if (ab && !c.fueAbierto) eventoHistoria('cajon_abierto', { label: c.label }); c.fueAbierto = ab; // prólogo: «pásame el destornillador»
       if (Math.abs(c.e - e0) > 1e-5 || c.cambio) { g.position.z = c.e; c.cambio = false; if (c.body) { g.updateMatrixWorld(true); moverCinematico(c.body, g.getWorldPosition(tA), g.getWorldQuaternion(tQ)); } }
     },
     // mete un objeto del catálogo dentro (coordenadas locales del cajón; y = fondo del cajón)

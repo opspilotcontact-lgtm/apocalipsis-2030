@@ -11,6 +11,8 @@ import { instancia } from '../cuerpos.js';
 import { clonarArma } from '../jugador.js';
 import { luzFx } from '../nucleo.js';
 import { escucharRuido } from '../interaccion/ruido.js';
+import { muebles } from '../interaccion/muebles.js';
+import { director } from './director.js';
 
 const vr = () => G.mode === 'vr';
 const R_ = (p, ev, peso, ef, d) => [p, ev, peso, ef, d];
@@ -30,7 +32,7 @@ function empezarEscaneo(D) {
     D.evento('escondido', { donde: 'distraccion' });
   });
   e.iv = setInterval(() => {
-    const r = npcs.r7s?.root, c = G.CAM; if (!r?.visible) return pararEscaneo(); if (e.distraido || !c || G.sigilo?.escondido) return;
+    const r = npcs.r7s?.root, c = G.CAM; if (!r?.visible) return pararEscaneo(); if (e.distraido || e.oculto || !c || G.sigilo?.escondido) return;
     const dx = c.x - r.position.x, dz = c.z - r.position.z, d = Math.hypot(dx, dz), f = (Math.sin(r.rotation.y) * dx + Math.cos(r.rotation.y) * dz) / Math.max(d, 1e-3);
     if (d < 1.6 || (d < 6.5 && f > .55)) { D.sfx('alerta'); D.evento('descubierto'); }
   }, 200);
@@ -132,7 +134,7 @@ export const ACTO1 = [
         ['DAVE', 'Son las nueve, Mike. Si vuelvo a llegar tarde a cenar, Sarah me cambia la cerradura.'],
         { n: 'MIKE', t: 'Ven a ver esto antes. Dos minutos. Te lo prometo.', gesto: ['mike', 'manos'] }] },
       { t: 'escena', l: [{ n: 'MIKE', t: 'Antes, hazme un favor: pásame el destornillador. El cajón de mi mesa, el que se atasca.', gesto: ['mike', 'senalar'] }] },
-      { t: 'evento', nombre: 'cajon_abierto', a: [6.6, -146.21], obj: 'El cajón de la mesa de Mike', pista: 'El cajón de su mesa. El que siempre se atasca.',
+      { t: 'evento', nombre: 'cajon_abierto', a: [6.6, -146.21], cond: () => muebles.some(m => m.tipo === 'cajon' && /Mike|mesa/.test(m.label) && m.abierto()), obj: 'El cajón de la mesa de Mike', pista: 'El cajón de su mesa. El que siempre se atasca.',
         alt: { label: 'Abrir el cajón', a: [6.6, -146.21], r: 1.6 } },
       { t: 'escena', l: [{ n: 'MIKE', t: 'Ese no, el otro... Da igual. Ya que estás, mira la grabadora. O no. Mejor no.', gesto: ['mike', 'encoger'] }] },
       cinta('g1'),
@@ -287,7 +289,7 @@ export const ACTO1 = [
       { t: 'evento', nombre: 'escondido', escondite: true, a: 'casa.coche',
         obj: () => vr() ? 'Un robot escanea la calle: túmbate (stick abajo) y métete bajo la pickup, o lanza una botella lejos' : 'Un robot escanea la calle: túmbate (Z) bajo la pickup, o lanza una botella lejos (E coger · G lanzar)',
         f0: D => { empezarEscaneo(D); D.caminar('r7s', [12, 72.6], .55); },
-        alt: { label: 'Meterte debajo de la pickup', a: 'casa.coche', r: 2.4 },
+        alt: { label: 'Meterte debajo de la pickup', a: 'casa.coche', r: 2.4, f: () => { if (escaneo) escaneo.oculto = true; } }, // la alternativa esconde de verdad (antes el R-7 te veía igual → fallo seguro)
         alAcabar: (D, m, d) => m.recordar('dave', d?.donde === 'distraccion' ? 'distrajo_al_robot' : 'se_escondio_bajo_la_pickup', 1) },
       { t: 'escena', libre: true, escondite: true, l: [
         { f: D => { if (!escaneo?.distraido) D.caminar('r7s', [17, 72.6], .6); } }, { espera: 5 }, // distraído: se queda husmeando el ruido
@@ -420,9 +422,10 @@ export const ACTO1 = [
         f: D => { OB.rifle.visible = false; D.arma('x56d'); D.jugador.ammo.x56d = 0; } },
       { t: 'escena', l: [
         { n: 'HANK', t: 'Sin cargador. Aquí no sale nada cargado por la puerta. Primero el chaleco.', gesto: ['hank', 'senalar'] }] },
-      { t: 'evento', nombre: 'chaleco_puesto', alAcabar: D => { const c = D.jugador.cargadores ||= {}; c.x56d = [...(c.x56d || []), 30, 30]; D.say('Hank te mete dos cargadores en el chaleco'); }, obj: 'Deja que Hank te ponga el chaleco', alt: { label: 'Ponerte el chaleco', pos: () => npcs.hank.root.position, r: 2.4, alto: 1.9 } },
+      // armas.js emite 'chaleco_puesto' una sola vez, al coger la X-56D (paso anterior): se acepta si ya llegó
+      { t: 'evento', nombre: 'chaleco_puesto', cond: () => !!director.eventos.chaleco_puesto, alAcabar: D => { const c = D.jugador.cargadores ||= {}; c.x56d = [...(c.x56d || []), 30, 30]; D.say('Hank te mete dos cargadores en el chaleco'); }, obj: 'Deja que Hank te ponga el chaleco', alt: { label: 'Ponerte el chaleco', pos: () => npcs.hank.root.position, r: 2.4, alto: 1.9 } },
       { t: 'escena', l: [{ n: 'HANK', t: 'Dos portacargadores. Saca uno y mételo. Hasta que haga clic.', gesto: ['hank', 'manos'] }] },
-      { t: 'evento', nombre: 'recargado', cond: D => D.jugador.ammo.x56d > 0, obj: () => vr() ? 'Saca un cargador del chaleco y mételo en la X-56D' : 'Recarga la X-56D (R)' },
+      { t: 'evento', nombre: 'recargado', cond: D => D.jugador.ammo.x56d > 0, max: 120, alAcabar: D => { if (!(D.jugador.ammo.x56d > 0)) D.jugador.ammo.x56d = 30; }, obj: () => vr() ? 'Saca un cargador del chaleco y mételo en la X-56D' : 'Recarga la X-56D (R)' },
       { t: 'escena', l: [
         { n: 'HANK', t: 'Ahí. Así se carga. Si lo pierdes, no te doy otro.', gesto: ['hank', 'asentir'], rec: [R_('hank', 'le_enseno_a_recargar', 1, { afecto: .1 })] },
         ['DAVE', '¿Tienes adónde ir? ¿Familia?'],
@@ -539,7 +542,7 @@ export const ACTO1 = [
       { t: 'subir', obj: 'Sube a la pickup con John' },
       { t: 'fn', f: D => { D.ocultar('john'); D.ocultar('hank'); D.ocultar('sarah'); D.robots([[3, -20, { vel: .7 }], [-2, -60, { vel: .8 }]]); } },
       { t: 'conducir', a: 'cordon.coche', r: 10, bajar: true, obj: 'Vuelve al laboratorio con John' },
-      { t: 'fn', f: async D => { await D.npc('john', [2, -118], Math.PI, { porte: 'quieto' }); D.caminar('john', [3.4, -143.6], 2.4); D.barreraLab(true); } },
+      { t: 'fn', f: async D => { D.despejar(); await D.npc('john', [2, -118], Math.PI, { porte: 'quieto' }); D.caminar('john', [3.4, -143.6], 2.4); D.barreraLab(true); } },
       cinta('g3', true),
       { t: 'ir', a: 'lab.consola', r: 1.8, obj: 'Los monitores de Mike: revisa las cámaras de seguridad' },
       { t: 'fn', f: D => { D.pantallas(['CÁMARAS · LAB M.', '1 · entrada', '2 · cápsulas', '3 · vitrina', '> elegir cámara'], false); D.camara(1); } },

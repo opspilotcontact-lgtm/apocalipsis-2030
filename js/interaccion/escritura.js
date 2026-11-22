@@ -7,6 +7,7 @@ import { buzz } from '../fx.js';
 import { golpe as sonGolpe } from './sonido.js';
 import { cuerpoFijo, alListo } from './fisica-adaptador.js';
 import { registrar, raiz } from './objetos.js';
+import { eventoHistoria } from './ruido.js';
 
 export const superficies = [];
 const FONDOS = {
@@ -42,7 +43,9 @@ function pintar(s, lx, ly, herr, clave) {
     x.strokeStyle = css(herr.color); x.lineCap = x.lineJoin = 'round'; x.globalAlpha = e.alfa;
     if (e.tiza) { for (let i = 0; i < 3; i++) { x.lineWidth = w * rnd(.4, 1); x.beginPath(); x.moveTo(a.u + rnd(-1, 1), a.v + rnd(-1, 1)); x.lineTo(u + rnd(-1, 1), v + rnd(-1, 1)); x.stroke(); } }
     else { x.lineWidth = w; x.beginPath(); x.moveTo(a.u, a.v); x.lineTo(u + (prev ? 0 : .01), v); x.stroke(); }
-    x.globalAlpha = 1; }
+    x.globalAlpha = 1;
+    // prólogo: firmar el «consentimiento» en la pizarra (unos 60 px de tinta bastan)
+    if (s.tipo === 'pizarra' && (s.tinta = (s.tinta || 0) + Math.hypot(u - a.u, v - a.v)) > 60) { s.tinta = 0; eventoHistoria('pizarra_escrita', { id: s.id }); } }
   s.ult.set(clave, { u, v }); s.sucio = true; s.guardarT = 1.2;
 }
 function levantar(clave) { for (const s of superficies) s.ult.delete(clave); }
