@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prueba de ingravidez</title>
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;height:100%;background:#000004;color:#e9eef5;font:14px/1.45 system-ui,sans-serif;overflow:hidden}
+canvas{display:block}
+#panel{position:fixed;left:12px;top:12px;width:min(340px,calc(100vw - 24px));background:rgba(8,12,22,.86);border:1px solid rgba(41,230,255,.25);border-radius:10px;padding:10px 12px;z-index:2}
+#panel h1{font-size:15px;margin:0 0 6px;letter-spacing:.04em}
+.fila{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+button{font:600 13px system-ui;min-height:32px;padding:0 10px;border-radius:7px;border:1px solid rgba(255,255,255,.18);background:#141b2b;color:#e9eef5;cursor:pointer}
+button.on{background:#29e6ff;color:#04121a;border-color:transparent}
+#info{font:12px/1.4 ui-monospace,monospace;color:#9aa7b8;white-space:pre-line;margin-top:6px}
+.peq{color:#9aa7b8;font-size:12px}
+#mira{position:fixed;left:50%;top:50%;width:10px;height:10px;margin:-5px;border:2px solid #fff;border-radius:50%;pointer-events:none;mix-blend-mode:difference}
+#aviso{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:calc(100vw - 32px);background:rgba(8,12,22,.9);border:1px solid rgba(41,230,255,.35);border-radius:8px;padding:8px 14px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs"}}</script>
+</head>
+<body>
+<div id="panel">
+  <h1>PRUEBA DE INGRAVIDEZ · ACTO II</h1>
+  <div class="fila">
+    <button id="bAsist" class="on">Gravedad cero asistida</button>
+    <button id="bVentana">Romper ventana</button>
+    <button id="bMampara">Mampara</button>
+    <button id="bO2">O2 ×10</button>
+    <button id="bReset">Reiniciar</button>
+  </div>
+  <div class="peq">Clic: capturar ratón / disparar · WASD chorros · Espacio/C (o Ctrl) subir/bajar · E asidero/agarrar · F panel o mantener = agarrarse · B botas · T cable · Q recoger cable · O botella · 1 X-27 · 2 X-56D · R recargar<br>VR: grip = agarrar y empujar · stick izq. clic = botas (stick = andar) · X junto a argolla = cable · Y = recoger · gatillo junto a panel = pulsar · A = mano/arma · B = cambiar arma</div>
+  <div id="info">Cargando física…</div>
+</div>
+<div id="mira"></div>
+<div id="aviso"></div>
+<script type="module">
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { F, iniciarFisica, pasoFisica } from '../js/espacio/fisica.js';
+import { S, construirSala, sembrarProps, zonaDe } from '../js/espacio/sala.js';
+import { AIRE, actualizarAire, pedirCiclo, alternarMampara, romperVentana, presionEn } from '../js/espacio/aire.js';
+import { J, crearJugador, reaparecer, antesFisica, despuesFisica, alternarBotas, vrAgarrar, vrSoltar, pcE, pcF, engancharCable, agarrado } from '../js/espacio/ingravidez.js';
+import { O2, crearMuneca, actualizarO2, pintarMuneca, cambiarBotellaPC, recogerBotella, giroBotellaVR } from '../js/espacio/traje.js';
+import { A, crearArmas, elegir, arma, disparar, recargar, actualizarArmas } from '../js/espacio/armas.js';
+import { iniciarSonido, actualizarSonido, sonar } from '../js/espacio/sonido.js';
+
+const $ = s => document.querySelector(s), V = THREE.Vector3;
+// ---------- render ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.xr.enabled = true;
+document.body.prepend(renderer.domElement); document.body.appendChild(VRButton.createButton(renderer));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x000004);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, 600); camera.position.set(0, 1.6, 0); camera.rotation.order = 'YXZ';
+const dolly = new THREE.Group(); dolly.add(camera); scene.add(dolly);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+let avisoT = 0;
+function aviso(t) { const a = $('#aviso'); a.textContent = t; a.style.opacity = 1; avisoT = 2.6; }
+
+await iniciarFisica();
+S.escena = scene; construirSala(scene); sembrarProps(scene);
+crearJugador(camera, dolly, S.inicio);
+
+// muñeca (PC: en el encuadre abajo a la izquierda) y armas (PC: abajo a la derecha)
+const muneca = crearMuneca(); muneca.position.set(-.2, -.2, -.36); muneca.rotation.set(.95, .25, 0); camera.add(muneca);
+const armas = crearArmas(); armas.position.set(.17, -.2, -.42); armas.scale.setScalar(.75); camera.add(armas);
+// fundido (cambio de pared con las botas / sin oxígeno): esfera pegada a la cámara, vale en PC y en VR
+const fundidoM = new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0, side: THREE.BackSide, depthTest: false });
+const fundido = new THREE.Mesh(new THREE.SphereGeometry(.2, 12, 8), fundidoM); fundido.renderOrder = 999; camera.add(fundido);
+// cable EVA
+const cableGeo = new THREE.BufferGeometry().setFromPoints(Array.from({ length: 24 }, () => new V()));
+const cable = new THREE.Line(cableGeo, new THREE.LineBasicMaterial({ color: 0xff7a2a })); cable.frustumCulled = false; scene.add(cable);
+
+// ---------- VR ----------
+let modoVR = false, armaEnMano = true;
+const ctrl = [0, 1].map(i => {
+  const grip = renderer.xr.getControllerGrip(i), ray = renderer.xr.getController(i); dolly.add(grip, ray);
+  const guante = new THREE.Mesh(new THREE.BoxGeometry(.07, .04, .11), new THREE.MeshStandardMaterial({ color: 0xd0d4da, roughness: .6 })); grip.add(guante);
+  const c = { i, grip, src: null, mano: null, prev: [], pos: new V(), prevPos: new V(), vel: new V(), prop: null, guante, giroPrev: 0 };
+  grip.addEventListener('connected', e => {
+    c.src = e.data; c.mano = e.data.handedness;
+    if (c.mano === 'right') { grip.add(armas); armas.position.set(0, -.02, .06); armas.rotation.set(-.3, 0, 0); armas.scale.setScalar(1); }
+    if (c.mano === 'left') { grip.add(muneca); muneca.position.set(0, 0, .07); muneca.rotation.set(0, 0, 0); }
+  });
+  grip.addEventListener('disconnected', () => { c.src = null; });
+  return c;
+});
+renderer.xr.addEventListener('sessionstart', () => { modoVR = true; iniciarSonido(); $('#mira').style.display = 'none'; });
+renderer.xr.addEventListener('sessionend', () => {
+  modoVR = false; camera.add(armas); armas.position.set(.17, -.2, -.42); armas.rotation.set(0, 0, 0); armas.scale.setScalar(.75); camera.add(muneca); muneca.position.set(-.2, -.2, -.36); muneca.rotation.set(.95, .25, 0);
+  camera.position.set(0, 1.6, 0); $('#mira').style.display = '';
+});
+
+function pulsarPanel(p) {
+  if (p.accion === 'ciclo') { if (!pedirCiclo()) aviso('La esclusa ya está en ciclo'); else sonar('motor'); }
+  else alternarMampara(), sonar('motor');
+  sonar('pitido');
+}
+
+// ---------- PC ----------
+const teclas = new Set(); let yaw = 0, pitch = 0, disparando = false, disparoPrev = false;
+const rayo = new THREE.Raycaster();
+function apuntado(lista, max) {
+  camera.getWorldPosition(rayo.ray.origin); camera.getWorldDirection(rayo.ray.direction); rayo.far = max;
+  return rayo.intersectObjects(lista, true)[0] || null;
+}
+const asideroApuntado = () => { const h = apuntado(S.asideros.map(a => a.mesh), 4.5); return h ? S.asideros[h.object.userData.asidero] : null; };
+addEventListener('keydown', e => {
+  if (e.repeat) return; iniciarSonido(); teclas.add(e.code);
+  if (e.code === 'Space' || e.code.startsWith('Control')) e.preventDefault();
+  if (e.code === 'KeyE') {
+    const b = F.props.find(p => p.tipo === 'botella'), h = b && apuntado([b.mesh], 2.5);
+    if (h) recogerBotella(b, aviso); else pcE(asideroApuntado(), aviso);
+  }
+  if (e.code === 'KeyF') { const h = apuntado(S.paneles.map(p => p.mesh), 2.5); if (h) pulsarPanel(S.paneles[h.object.userData.panel]); else pcF(true); }
+  if (e.code === 'KeyB') alternarBotas(aviso);
+  if (e.code === 'KeyT') engancharCable(null, aviso);
+  if (e.code === 'KeyO') cambiarBotellaPC(aviso);
+  if (e.code === 'KeyR') recargar();
+  if (e.code === 'Digit1') elegir('x27'), sonar('clic');
+  if (e.code === 'Digit2') elegir('x56d'), sonar('clic');
+});
+addEventListener('keyup', e => { teclas.delete(e.code); if (e.code === 'KeyF') pcF(false); });
+renderer.domElement.addEventListener('mousedown', e => {
+  iniciarSonido();
+  if (document.pointerLockElement !== renderer.domElement) { renderer.domElement.requestPointerLock?.(); return; }
+  if (e.button === 0) disparando = true;
+});
+addEventListener('mouseup', e => { if (e.button === 0) disparando = false; });
+addEventListener('mousemove', e => {
+  if (document.pointerLockElement !== renderer.domElement || modoVR) return;
+  yaw -= e.movementX * .0022; pitch = Math.max(-1.55, Math.min(1.55, pitch - e.movementY * .0022));
+});
+$('#bAsist').onclick = e => { J.asistida = !J.asistida; e.target.classList.toggle('on', J.asistida); };
+$('#bVentana').onclick = () => { iniciarSonido(); sonar('vidrio'); romperVentana(scene); };
+$('#bMampara').onclick = () => { iniciarSonido(); alternarMampara(); sonar('motor'); };
+$('#bO2').onclick = e => { O2.rapido = O2.rapido === 1 ? 10 : 1; e.target.classList.toggle('on', O2.rapido > 1); };
+$('#bReset').onclick = () => location.reload();
+
+function disparo() {
+  const w = arma(), ret = disparar(() => romperVentana(scene));
+  if (ret && !J.anclado) { // X-56D en ingravidez: el culatazo te lanza hacia atrás
+    const dir = new V(0, 0, -1).applyQuaternion(A.modelos[A.actual].userData.boca.getWorldQuaternion(new THREE.Quaternion()));
+    J.impulso.addScaledVector(dir, -ret);
+  }
+  return w;
+}
+function reaparecerCon(motivo) { reaparecer(S.inicio); O2.botella = 1; O2.sinAire = 0; aviso(motivo + ' · reapareces en el pasillo'); }
+
+// ---------- bucle ----------
+const reloj = new THREE.Clock(), tA = new V(), tQ = new THREE.Quaternion(), chorro = new V();
+let hudT = 0;
+function fotograma(dtFijo, sinRender) {
+  const dt = dtFijo ?? Math.min(reloj.getDelta(), .05);
+  dolly.updateMatrixWorld(true);
+  const ent = { dt, chorro: null, andar: { x: 0, y: 0 }, recoger: false, manos: [null, null], vr: modoVR };
+
+  if (!modoVR) {
+    camera.rotation.set(pitch, yaw, 0);
+    const k = c => teclas.has(c) ? 1 : 0;
+    const x = k('KeyD') - k('KeyA'), y = k('Space') - Math.max(k('ControlLeft'), k('ControlRight'), k('KeyC')), z = k('KeyS') - k('KeyW');
+    chorro.set(x, y, z); if (chorro.lengthSq()) chorro.normalize().applyQuaternion(camera.getWorldQuaternion(tQ));
+    ent.chorro = chorro; ent.andar = { x, y: -z }; ent.recoger = teclas.has('KeyQ');
+    if (disparando && (arma().auto || !disparoPrev)) disparo();
+    disparoPrev = disparando;
+  } else {
+    for (const c of ctrl) {
+      const gp = c.src?.gamepad; if (!gp) continue;
+      c.grip.getWorldPosition(c.pos); c.vel.subVectors(c.pos, c.prevPos).divideScalar(Math.max(dt, 1 / 144)); c.prevPos.copy(c.pos);
+      ent.manos[c.i] = { pos: c.pos };
+      const b = gp.buttons.map(x => x.pressed), ed = n => b[n] && !c.prev[n], ax = gp.axes;
+      const derecha = c.mano === 'right', libre = !derecha || !armaEnMano;
+      if (ed(1) && libre) c.prop = vrAgarrar(c.i, { pos: c.pos });
+      if (!b[1] && c.prev[1]) { vrSoltar(c.i, c.vel); c.prop = null; }
+      if (c.prop) { // objeto en la mano: lo lleva la mano
+        const t = c.prop.body.translation(), d = tA.set(c.pos.x - t.x, c.pos.y - t.y, c.pos.z - t.z).divideScalar(Math.max(dt, 1 / 144));
+        c.prop.body.setLinvel({ x: d.x, y: d.y, z: d.z }, true); c.prop.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        if (c.prop.tipo === 'botella' && giroBotellaVR(dt, c.prop, c.grip, J.cabeza, aviso)) { J.agarres[c.i] = null; c.prop = null; }
+      }
+      c.guante.material.color.setHex(J.agarres[c.i] ? 0xffd040 : 0xd0d4da);
+      // gatillo: panel cercano (o disparar con el arma en la mano derecha)
+      if (ed(0)) { const p = S.paneles.find(p => p.pos.distanceTo(c.pos) < .18); if (p) pulsarPanel(p); }
+      if (derecha && armaEnMano && b[0] && (arma().auto || ed(0)) && !S.paneles.some(p => p.pos.distanceTo(c.pos) < .18)) disparo();
+      if (derecha) {
+        if (ed(4)) { armaEnMano = !armaEnMano; armas.visible = armaEnMano; sonar('clic'); }
+        if (ed(5)) { elegir(A.actual === 'x27' ? 'x56d' : 'x27'); sonar('clic'); }
+        const sx = ax[2] || 0; // giro por pasos de 30° alrededor de la cabeza
+        if (Math.abs(sx) > .7 && !c.giroPrev) {
+          camera.getWorldPosition(tA); const ejeUp = new V(0, 1, 0).applyQuaternion(dolly.quaternion);
+          tQ.setFromAxisAngle(ejeUp, -Math.sign(sx) * Math.PI / 6);
+          dolly.position.sub(tA).applyQuaternion(tQ).add(tA); dolly.quaternion.premultiply(tQ); dolly.updateMatrixWorld(true);
+        }
+        c.giroPrev = Math.abs(sx) > .7;
+      } else {
+        if (ed(3)) alternarBotas(aviso);
+        if (ed(4)) engancharCable(c.pos, aviso);
+        ent.recoger = b[5];
+        ent.andar = { x: ax[2] || 0, y: -(ax[3] || 0) };
+      }
+      c.prev = b;
+    }
+  }
+
+  actualizarAire(dt, scene);
+  antesFisica(ent);
+  pasoFisica(dt);
+  despuesFisica(dt, () => reaparecerCon('Te has perdido en el vacío'));
+  actualizarArmas(dt);
+
+  const presion = presionEn(J.cabeza), vacio = presion < .5;
+  actualizarO2(dt, vacio, aviso);
+  if (O2.sinAire > 8) reaparecerCon('Sin oxígeno');
+  actualizarSonido(dt, { presion, contacto: agarrado() || (J.botas && !!J.normal), flujoEsclusa: AIRE.flujoEsclusa, flujoVenteo: AIRE.flujoVenteo, o2: O2.botella });
+  while (AIRE.eventos.length) { const t = AIRE.eventos.shift(); aviso(t); if (t.includes('VENTANA')) sonar('alarma'); }
+
+  // cable: del arnés a la argolla; con holgura hace una curva
+  cable.visible = !!J.cable.ancla;
+  if (J.cable.ancla) {
+    const a = J.cable.ancla.pos, h = tA.copy(J.cabeza).addScaledVector(new V(0, 1, 0).applyQuaternion(dolly.quaternion), -.7);
+    const L = a.distanceTo(h), holg = Math.max(0, J.cable.L - L) * .25, mid = a.clone().add(h).multiplyScalar(.5).add(new V(0, -1, 0).applyQuaternion(dolly.quaternion).multiplyScalar(holg));
+    const curva = new THREE.QuadraticBezierCurve3(a.clone(), mid, h.clone()), pa = cableGeo.attributes.position;
+    for (let i = 0; i < 24; i++) { const p = curva.getPoint(i / 23); pa.setXYZ(i, p.x, p.y, p.z); }
+    pa.needsUpdate = true; cable.material.color.setHex(J.cable.tenso ? 0xff3a1a : 0xff7a2a);
+  }
+  // fundido: negro al cambiar de pared, rojo sin oxígeno
+  const rojo = Math.min(1, O2.sinAire / 8);
+  fundidoM.color.setRGB(rojo * .5, 0, 0); fundidoM.opacity = Math.max(J.fundido, rojo * .85); fundido.visible = fundidoM.opacity > .01;
+
+  const w = arma(), zona = zonaDe(J.cabeza);
+  pintarMuneca(dt, [`O2 ${Math.round(O2.botella * 100)}%  +${O2.reservas}`, `${J.botas ? (J.normal ? 'BOTAS ON' : 'BOTAS ···') : 'botas off'}  ${J.cable.ancla ? 'CABLE' : ''}`, `${w.nombre} ${w.balas}/${w.cargador}`, `P ${presion.toFixed(2)} ${zona}`]);
+  if ((hudT -= dt) <= 0) {
+    hudT = .2;
+    const c = AIRE.ciclo, cab = J.cabeza;
+    $('#info').textContent = [
+      `zona ${zona} · presión ${presion.toFixed(2)} (C ${AIRE.p.C.toFixed(2)} A ${AIRE.p.A.toFixed(2)} H ${AIRE.p.H.toFixed(2)})`,
+      `velocidad ${J.vel.length().toFixed(2)} m/s · ${agarrado() ? 'AGARRADO' : J.rumbo ? 'yendo al asidero' : J.botas && J.normal ? 'botas pegadas' : 'flotando'}`,
+      `botas ${J.botas ? (J.normal ? 'ON' : 'buscando superficie') : 'OFF'} · cable ${J.cable.ancla ? `${cab.distanceTo(J.cable.ancla.pos).toFixed(1)}/12 m${J.cable.tenso ? ' TENSO' : ''}` : 'suelto'}`,
+      `O2 ${Math.round(O2.botella * 100)} % · reservas ${O2.reservas}${O2.cambiando > 0 ? ' · enroscando…' : ''}${O2.rapido > 1 ? ' · ×10' : ''}`,
+      `arma ${w.nombre} ${w.balas}/${w.cargador}${w.retroceso ? ' (empuja en ingravidez)' : ' (sin retroceso)'}`,
+      `esclusa: ${c ? `${c.dir} · ${c.fase}` : AIRE.puertas.in.a > .5 ? 'interior abierta' : AIRE.puertas.ex.a > .5 ? 'exterior abierta' : 'cerrada'} · ventana ${AIRE.ventanaRota ? (AIRE.mampara > .97 ? 'rota · mampara cerrada' : 'ROTA') : 'intacta'}`,
+      `props ${F.props.length} · pos ${cab.x.toFixed(1)} ${cab.y.toFixed(1)} ${cab.z.toFixed(1)}`,
+    ].join('\n');
+  }
+  if (avisoT > 0 && (avisoT -= dt) <= 0) $('#aviso').style.opacity = 0;
+  if (!sinRender) renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(() => fotograma());
+// pruebas sin depender del rAF (una pestaña tapada va a 1 fps): __eva.simular(segundos)
+const simular = s => { for (let i = 0; i < s * 60; i++) fotograma(1 / 60, true); reloj.getDelta(); };
+window.__eva = { simular, J, AIRE, O2, S, F, A, romper: () => romperVentana(scene), ciclo: pedirCiclo, botas: () => alternarBotas(aviso), cable: () => engancharCable(null, aviso), agarrar: () => pcE(null, aviso), disparo, elegir, ir: (x, y, z) => reaparecer(new V(x, y, z)) };
+</script>
+</body>
+</html>
