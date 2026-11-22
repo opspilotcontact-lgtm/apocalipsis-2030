@@ -14,7 +14,7 @@ export { say };
 
 const tA = new V3(), tB = new V3(), tC = new V3(), tD = new V3(), tQ = new THREE.Quaternion();
 
-export const P = { vel: new V3(), onGround: true, hp: 100, lastHurt: -9, yaw: 0, pitch: 0, w: 'punos', inv: ['punos'], ammo: { x56d: 30 }, reloading: 0, fireCD: 0, swing: -1, swingHit: false, side: 0, trigger: false, dead: 0, recoil: 0, bob: 0, trigPrev: false, bPrev: false, yPrev: false, aPrev: false, xPrev: false, snap: false, sentado: null, inmune: false, bloqueoMov: false };
+export const P = { vel: new V3(), onGround: true, hp: 100, lastHurt: -9, yaw: 0, pitch: 0, w: 'punos', inv: ['punos'], ammo: { x56d: 30 }, cargadores: { x56d: [], pistola: [] }, reloading: 0, fireCD: 0, swing: -1, swingHit: false, side: 0, trigger: false, dead: 0, recoil: 0, bob: 0, trigPrev: false, bPrev: false, yPrev: false, aPrev: false, xPrev: false, snap: false, sentado: null, inmune: false, bloqueoMov: false };
 export const WEAPONS = {
   punos: { id: 'punos', name: 'Puños', melee: true, dmg: 16, reach: 1.9, dur: .3, snd: 'punch', tipo: 'contundente' },
   piedra: { id: 'piedra', name: 'Piedra', melee: true, dmg: 32, reach: 2.0, dur: .42, snd: 'stone', tipo: 'contundente' },
@@ -50,8 +50,22 @@ function vestir(g, id) {
   const m = R.escena.clone(true); m.position.copy(R.emp).negate(); m.name = 'modeloReal';
   const sombra = !g.userData.sinSombra; m.traverse(x => { if (x.isMesh) { x.castShadow = sombra; x.receiveShadow = true; } });
   g.add(m); g.userData.real = true;
+  if (id === 'x56d' && g === WOBJ[id]?.g) ocultableCargador(g, m);
   const boca = g.getObjectByName('boca'); if (boca && R.boca) boca.position.copy(R.boca);
   return g;
+}
+// el cargador del .glb va en la misma malla que el arma: en la recarga física de VR se recorta con un discard
+// por una caja (coordenadas del arma: x libre, y < .03, z ∈ [-.27, -.11]) para que se vea el pozo vacío
+function ocultableCargador(g, m) {
+  const u = g.userData.uSinCarg = { value: 0 }; g.updateMatrixWorld(true);
+  m.traverse(x => { if (!x.isMesh) return; const inv = new THREE.Matrix4().copy(x.matrixWorld).invert().multiply(g.matrixWorld);
+    const a = new V3(-1, -1, -.27).applyMatrix4(inv), b = new V3(1, .03, -.11).applyMatrix4(inv), mn = a.clone().min(b), mx = a.clone().max(b);
+    const mat = x.material = x.material.clone();
+    mat.onBeforeCompile = sh => { sh.uniforms.uSinCarg = u; sh.uniforms.uCMin = { value: mn }; sh.uniforms.uCMax = { value: mx };
+      sh.vertexShader = 'varying vec3 vPosCarg;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvPosCarg = position;');
+      sh.fragmentShader = 'uniform float uSinCarg; uniform vec3 uCMin, uCMax; varying vec3 vPosCarg;\n' + sh.fragmentShader.replace('void main() {', 'void main() {\nif (uSinCarg > .5 && all(greaterThan(vPosCarg, uCMin)) && all(lessThan(vPosCarg, uCMax))) discard;'); };
+    mat.customProgramCacheKey = () => 'sinCargX56';
+  });
 }
 // copia de un arma que se viste con el .glb en cuanto llega (o: { sombra: false })
 export function clonarArma(id, o = {}) {
@@ -192,7 +206,14 @@ export function tryFire() {
   if (P.ammo[w.id] <= 0) startReload();
 }
 export function startReload() { const w = WEAPONS[P.w]; if (G.mode === 'vr' && !w.melee && G.opciones?.recarga !== 'automatica') return; // VR: recarga física (interaccion/armas.js)
-  if (w.melee || P.reloading > 0 || P.ammo[w.id] >= w.mag) return; P.reloading = 1.3; sfx('reload'); }
+  if (w.melee || P.reloading > 0 || P.ammo[w.id] >= w.mag) return;
+  if (!cargadoresDe(w.id).length) { if (!P.avisoSinCarg || G.time - P.avisoSinCarg > 2) { P.avisoSinCarg = G.time; say('No quedan cargadores'); sfx('empty'); } return; }
+  P.reloading = 1.3; sfx('reload'); }
+// escasez (F1.5): la munición solo sale de cargadores encontrados; el chaleco guarda las balas de cada cargador
+export const cargadoresDe = id => (P.cargadores ||= {})[id] ||= [];
+// saca el cargador más lleno del chaleco (null si no hay); el que estaba puesto vuelve al chaleco si le quedan balas
+export function tomarCargador(id, devolver = 0) { const r = cargadoresDe(id); if (devolver > 0) r.push(devolver); r.sort((a, b) => b - a); return r.length ? r.shift() : null; }
+export function darCargadores(id, n = 1, balas = WEAPONS[id]?.mag || 0) { const r = cargadoresDe(id); for (let i = 0; i < n; i++) r.push(balas); return r.length; }
 function startSwing() { if (P.swing >= 0) return; P.swing = 0; P.swingHit = false; P.side ^= 1; sfx('whoosh'); }
 function meleePC() {
   const w = WEAPONS[P.w], o = new V3(), d = camera.getWorldDirection(new V3()); camera.getWorldPosition(o);
@@ -309,7 +330,7 @@ export function updateViewmodel(dt) {
 export function updateArmas(dt) {
   if (P.dead > 0) reiniciarLesiones(); else actualizarLesiones(dt);
   P.fireCD -= dt;
-  if (P.reloading > 0) { P.reloading -= dt; if (P.reloading <= 0) { P.reloading = 0; const w = WEAPONS[P.w]; if (!w.melee) P.ammo[w.id] = w.mag; } }
+  if (P.reloading > 0) { P.reloading -= dt; if (P.reloading <= 0) { P.reloading = 0; const w = WEAPONS[P.w]; if (!w.melee) { const b = tomarCargador(w.id, P.ammo[w.id]); P.ammo[w.id] = b ?? P.ammo[w.id]; } } }
   if (P.swing >= 0) { const w = WEAPONS[P.w]; P.swing += dt / w.dur; if (!P.swingHit && P.swing > .4) { P.swingHit = true; meleePC(); } if (P.swing >= 1) P.swing = -1; }
   if (P.dead <= 0 && G.time - P.lastHurt > 4 && P.hp < 100) P.hp = Math.min(100, P.hp + dt * 8);
   P.recoil = Math.max(0, P.recoil - dt * 6);

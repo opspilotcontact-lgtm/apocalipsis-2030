@@ -140,7 +140,7 @@ export const director = {
     await fundido(1, 2.5); if (tok !== this.token) return;
     this.limpiar(true);
     await this.prepararCap(); if (tok !== this.token) return;
-    this.cp = { pasoIdx: 0, inv: [...P.inv], w: P.w, punto: this.cap.inicio, rehacer: null };
+    this.cp = { pasoIdx: 0, inv: [...P.inv], w: P.w, carg: JSON.stringify(P.cargadores || {}), ammo: { ...P.ammo }, punto: this.cap.inicio, rehacer: null };
     ui.tarjeta(this.cap.titulo, this.cap.sub, this.cap.nota);
     sfx('objetivo');
     fundido(0, .8);
@@ -151,6 +151,7 @@ export const director = {
     aplicarHora(c.hora || 'noche'); setCapa('calma', !c.caos); setCapa('caos', !!c.caos); setCapa('tierra', !c.espacio); setCapa('espacio', !!c.espacio); G.enEspacio = !!c.espacio;
     ambiente(c.ambiente || null);
     P.inv = (c.armas || ['punos']).filter(k => WEAPONS[k]); if (!P.inv.length) P.inv = ['punos']; P.w = WEAPONS[c.arma] ? c.arma : P.inv[P.inv.length - 1]; for (const k of P.inv) if (WEAPONS[k].mag) P.ammo[k] = WEAPONS[k].mag;
+    P.cargadores = {}; for (const k in c.cargadores || {}) P.cargadores[k] = Array(c.cargadores[k]).fill(WEAPONS[k]?.mag || 0); // escasez: presupuesto por capítulo
     P.hp = 100; P.dead = 0;
     if (c.inicio) { const p = PUNTOS[c.inicio]; teleport(p[0], p[1], p[2] || 0); }
     attachWeapon();
@@ -170,7 +171,7 @@ export const director = {
     const pasos = this.cap.pasos; this.pasoIdx = i; this.paso = pasos[i]; this.t = 0; this.hablante = null; G.enDialogo = false; this.cortarLinea(); this.cerrarEleccion();
     const p = this.paso; if (!p) return this.terminarCap(); this.ayuda1 = this.ayuda2 = false;
     if (p.si && !p.si(memoria, API)) return this.irAPaso(i + 1);
-    if (p.cp) this.cp = { pasoIdx: i, inv: [...P.inv], w: P.w, punto: p.cp.punto, rehacer: p.cp.rehacer };
+    if (p.cp) this.cp = { pasoIdx: i, inv: [...P.inv], w: P.w, carg: JSON.stringify(P.cargadores || {}), ammo: { ...P.ammo }, punto: p.cp.punto, rehacer: p.cp.rehacer };
     if (p.obj) { const o = typeof p.obj === 'function' ? p.obj(API) : p.obj; ui.objetivo(o); G.objetivoDave = p.dave || o; sfx('objetivo'); }
     const tok = this.token;
     const sig = () => { if (tok === this.token && this.paso === p) this.avanzar(); };
@@ -207,7 +208,7 @@ export const director = {
         // zona segura: grabadora / diario. Guarda el capítulo y deja aquí el punto de control (sin parar la historia)
         const pos = p.pos || punto(p.a);
         usable({ id: 'guardar-' + (p.id || i), pos, r: p.r || 1.8, label: p.label || 'Guardar (grabadora)', alto: p.alto, on: () => {
-          this.cp = { pasoIdx: i + 1, inv: [...P.inv], w: P.w, punto: p.punto || this.cp?.punto, rehacer: p.rehacer };
+          this.cp = { pasoIdx: i + 1, inv: [...P.inv], w: P.w, carg: JSON.stringify(P.cargadores || {}), ammo: { ...P.ammo }, punto: p.punto || this.cp?.punto, rehacer: p.rehacer };
           this.guardar(this.capIdx); try { localStorage.setItem('apoc2030.guardado', JSON.stringify({ cap: this.capIdx, paso: i + 1 })); } catch (e) {}
           sfx('pickup'); say('Partida guardada'); } });
         sig(); break; }
@@ -432,7 +433,8 @@ export const director = {
     const opc = this.opcionales || [];
     this.limpiar(false);
     const cp = this.cp;
-    P.inv = [...cp.inv]; P.w = cp.w; P.hp = 100; P.dead = 0; for (const k of P.inv) if (WEAPONS[k]?.mag) P.ammo[k] = WEAPONS[k].mag;
+    P.inv = [...cp.inv]; P.w = cp.w; P.hp = 100; P.dead = 0; for (const k of P.inv) if (WEAPONS[k]?.mag) P.ammo[k] = cp.ammo?.[k] ?? WEAPONS[k].mag;
+    if (cp.carg) P.cargadores = JSON.parse(cp.carg); // la munición vuelve a como estaba en el punto de control
     if (cp.pasoIdx === 0) { ocultarTodos(); this.opcionales = []; await this.prepararCap(); }
     else { const p = PUNTOS[cp.punto]; teleport(p[0], p[1], p[2] || 0); if (cp.rehacer) await cp.rehacer(API); this.opcionales = opc; for (const f of opc) f(); }
     attachWeapon();

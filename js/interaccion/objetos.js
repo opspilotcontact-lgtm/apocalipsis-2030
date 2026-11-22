@@ -206,7 +206,9 @@ export function usarProp(pr, on, mano) {
   if (u === 'radio') { eventoHistoria('walkie_hablar'); eventoHistoria('walkie_senal'); pr.radio ||= new Radio(); pr.radio.pos.copy(pr.root.position); const e = pr.radio.siguiente(); say('RADIO · ' + e.n); return true; }
   const P = ganchos.P;
   if (u === 'curar') { if (!P) return false; P.hp = Math.min(100, P.hp + 50); sfx('pickup'); say('Botiquín · +50 salud'); quitarProp(pr); if (mano) { mano.sostiene = null; if (mano.c) mano.c.prop = null; } return true; }
-  if (u === 'municion') { if (P?.inv.includes('x56d')) { P.ammo.x56d = 30; say('Cargador lleno'); } else say('Munición de 5,56 · no tienes con qué usarla'); sfx('reload'); quitarProp(pr); if (mano) { mano.sostiene = null; if (mano.c) mano.c.prop = null; } return true; }
+  if (u === 'venda') { if (!P) return false; P.hp = Math.min(100, P.hp + 20); import('../combate/lesiones.js').then(Ls => { for (const z of Ls.ZONAS_JUGADOR) if (Ls.L[z].sangra > 0) Ls.curarZona(z, 'venda'); }).catch(() => {}); sfx('pickup'); say('Venda · +20 salud, deja de sangrar'); quitarProp(pr); if (mano) { mano.sostiene = null; if (mano.c) mano.c.prop = null; } return true; }
+  // escasez (F1.5): cada caja es UN cargador lleno que va al chaleco; es la única fuente de munición
+  if (u === 'municion') { if (P) { const r = ((P.cargadores ||= {}).x56d ||= []); r.push(30); say(P.inv.includes('x56d') ? 'Cargador de X-56D · ' + r.length + ' en el chaleco' : 'Un cargador de 5,56 · lo guardas'); } sfx('reload'); quitarProp(pr); if (mano) { mano.sostiene = null; if (mano.c) mano.c.prop = null; } return true; }
   if (u === 'cinta') { if (cintaCola.length) return true; cintaCola = [...(pr.lineas || LINEAS_CINTA)]; cintaT = 0; sonClic(pr.root.position); return true; }
   return false;
 }

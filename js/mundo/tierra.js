@@ -53,7 +53,7 @@ function farola(x, z, ry = 0) {
   block(ax, az, .4, .28, .08, M.sodium, { y: 5.6, collide: false, cast: false, ry, shoot: false });
   flat(ax, az, 6, 6, poolMat, .03);
   const cone = new THREE.Mesh(new THREE.ConeGeometry(2.4, 5.5, 16, 1, true), coneMat); pieza(cone, ax, 2.85, az, { cast: false, shoot: false });
-  fuenteLuz(ax, 5.3, az, 0xffb35a, 26, 15);
+  fuenteLuz(ax, 5.3, az, 0xffb35a, 40, 18); // farola: charco de luz que guía (exposición nocturna, bloque B)
   halos[B.cap === 'caos' ? 'caos' : 'tierra'].push(ax + B.ox, 5.45, az + B.oz);
 }
 function arbol(x, z, s = 1) {
@@ -241,7 +241,9 @@ function laboratorio() {
   }
   for (let i = 0; i < 3; i++) for (const sx of [-5.5, 5.5]) { const p = new THREE.Mesh(new THREE.PlaneGeometry(2.4, .5), M.white); p.rotation.x = Math.PI / 2; pieza(p, sx, 6.21, -22 - i * 5, { shoot: false, cast: false }); }
   flat(-7, -27, 7, 12, M.hazard, .025, 0, 3);
-  fuenteLuz(-5.5, 5.4, -27, 0xdfefff, 22, 17, 'fijo', true); fuenteLuz(5.5, 5.4, -27, 0xdfefff, 22, 17, 'fijo', true);
+  fuenteLuz(-5.5, 5.4, -27, 0xdfefff, 33, 17, 'fijo', true); fuenteLuz(5.5, 5.4, -27, 0xdfefff, 33, 17, 'fijo', true);
+  // pasillo trasero (taquilla y puerta acristalada): fluorescente que parpadea + piloto rojo de emergencia sobre la puerta
+  fuenteLuz(-9.6, 3.1, -31.6, 0xfff0d8, 8, 8, 'parpadeo', true); fuenteLuz(-8.5, 2.9, -35.2, 0xff3020, 3.5, 5, 'fijo', true);
   // planos en las paredes
   const poster = (c, w, h, x, y, z, ry, rz = 0) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), std({ map: toTex(c, false), roughness: .85 })); m.rotation.set(0, ry, rz); pieza(m, x, y, z, { shoot: false, cast: false }); };
   poster(blueprint('robot', 'R-01'), 2.4, 1.8, 11.56, 3.2, -22.5, -Math.PI / 2, .02);
@@ -265,7 +267,7 @@ function laboratorio() {
   en('caos', B.ox, B.oz, () => {
     const l = canvasPlane(1.6, .4, 512, textDraw('#ff6a50', .7, 'rgba(20,6,6,.9)')); pieza(l.mesh, 0, .55, -29.53, { static: false, cast: false }); l.set('CASCO NEURONAL v3\nROBADO');
     for (let i = 0; i < 26; i++) { const sh = new THREE.Mesh(new THREE.PlaneGeometry(rnd(.04, .14), rnd(.04, .14)), M.cristal); sh.rotation.set(-Math.PI / 2, 0, rnd(0, 3)); pieza(sh, rnd(-1.2, 1.2), .03, -30 + rnd(-1.2, 1.2), { static: false, cast: false, shoot: false }); }
-    fuenteLuz(0, 5, -27, 0xff2a1a, 30, 18, 'alarma', true);
+    fuenteLuz(0, 5, -27, 0xff2a1a, 42, 20, 'alarma', true);
     crate(-3, -24, .9); crate(3.5, -28, .8); block(-5.5, -22.5, 2.6, 1, .9, M.wood, { s: 1, ry: .5, collide: false });
   });
   // cápsulas (la segunda guarda a la Unidad 01)

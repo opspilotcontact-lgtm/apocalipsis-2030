@@ -111,7 +111,7 @@ renderer.setAnimationLoop(() => {
   tA.copy(pf); tA.x = Math.round(tA.x); tA.z = Math.round(tA.z); sun.target.position.set(tA.x, 0, tA.z); sun.position.copy(sun.target.position).addScaledVector(sunDir, 70);
   sky.position.copy(G.CAM);
   const w = WEAPONS[P.w];
-  actualizarUI(dt, { hp: Math.max(0, Math.ceil(P.hp)), w: car.occupied ? 'Al volante' : P.sentado ? 'Sentado' : w.name, ammo: car.occupied ? Math.round(Math.abs(car.speed) * 3.6) + ' km/h' : w.melee ? '∞' : P.reloading > 0 ? 'Recargando…' : `${P.ammo[w.id]} / ${w.mag}`, det: deteccion.activa || deteccion.v > 0 ? deteccion.v : 0, visto: deteccion.visto });
+  actualizarUI(dt, { hp: Math.max(0, Math.ceil(P.hp)), w: car.occupied ? 'Al volante' : P.sentado ? 'Sentado' : w.name, ammo: car.occupied ? Math.round(Math.abs(car.speed) * 3.6) + ' km/h' : w.melee ? '∞' : P.reloading > 0 ? 'Recargando…' : `${P.ammo[w.id]} · ${(P.cargadores?.[w.id] || []).length} carg.`, det: deteccion.activa || deteccion.v > 0 ? deteccion.v : 0, visto: deteccion.visto });
   actualizarJuego(dt); // sistemas de juego (js/juego): también hace el render a textura de las cámaras
   renderer.render(scene, camera);
 });

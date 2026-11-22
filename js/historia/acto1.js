@@ -10,9 +10,32 @@ import { npcs } from '../npcs.js';
 import { instancia } from '../cuerpos.js';
 import { clonarArma } from '../jugador.js';
 import { luzFx } from '../nucleo.js';
+import { escucharRuido } from '../interaccion/ruido.js';
 
 const vr = () => G.mode === 'vr';
 const R_ = (p, ev, peso, ef, d) => [p, ev, peso, ef, d];
+
+// ───────────── cap. 2 · primera lección de sigilo (PLAN §3): un R-7 que escanea la calle ─────────────
+// Esconderse debajo de la pickup (tumbado junto a ella) o lanzar algo lejos: el ruido lo desvía. Si te ve de cerca
+// sin esconderte → 'descubierto' y se reintenta desde la puerta de casa.
+const DISTRAE = new Set(['botella', 'lata', 'caja', 'objeto', 'cristal', 'portazo', 'rotura', 'golpe']);
+let escaneo = null, botellaPuesta = false;
+function pararEscaneo() { if (!escaneo) return; escaneo.off?.(); clearInterval(escaneo.iv); escaneo = null; }
+function empezarEscaneo(D) {
+  pararEscaneo(); const e = escaneo = { distraido: null };
+  e.off = escucharRuido(ev => {
+    const r = npcs.r7s?.root; if (e.distraido || !r?.visible || ev.fuente !== 'jugador' || !DISTRAE.has(ev.tipo)) return;
+    const c = G.CAM; if (c && Math.hypot(ev.pos.x - c.x, ev.pos.z - c.z) < 4) return; // tiene que caer lejos de ti
+    e.distraido = ev.pos; D.caminar('r7s', [ev.pos.x, ev.pos.z], 1.1); D.sfx('escaner'); D.say('El robot gira la cabeza hacia el ruido');
+    D.evento('escondido', { donde: 'distraccion' });
+  });
+  e.iv = setInterval(() => {
+    const r = npcs.r7s?.root, c = G.CAM; if (!r?.visible) return pararEscaneo(); if (e.distraido || !c || G.sigilo?.escondido) return;
+    const dx = c.x - r.position.x, dz = c.z - r.position.z, d = Math.hypot(dx, dz), f = (Math.sin(r.rotation.y) * dx + Math.cos(r.rotation.y) * dz) / Math.max(d, 1e-3);
+    if (d < 1.6 || (d < 6.5 && f > .55)) { D.sfx('alerta'); D.evento('descubierto'); }
+  }, 200);
+}
+function botellaCalle() { if (botellaPuesta) return; botellaPuesta = true; import('../interaccion/objetos.js').then(o => o.crearProp('botella', 21.2, 0, 76.4, { ry: 1.2 })).catch(() => {}); }
 
 // ───────────── objetos de la historia (se crean una vez) ─────────────
 // Los muebles marcados «provisional» son de relleno hasta que el mundo los tenga (docs/pendientes-mundo.md).
@@ -258,6 +281,20 @@ export const ACTO1 = [
       { t: 'oleada', robots: [[29, 69.5, { retraso: .2 }]], obj: () => vr() ? 'Acaba con el robot: golpéalo de verdad con la piedra' : 'Acaba con el robot (clic para golpear)', cp: { punto: 'casa.entrada' },
         rec: [R_('dave', 'primer_robot_con_piedra', 2)] },
       { t: 'dialogo', libre: true, l: [['DAVE', 'Se apagan si les das fuerte en la cabeza. Bueno saberlo.']] },
+      // esconderse / distraer: se enseña aquí (antes era en el lab) y se aplica con presión en el cap. 3
+      { t: 'fn', cp: { punto: 'casa.entrada' }, f: async D => { pararEscaneo(); await D.npc('r7s', [-8, 72.6], Math.PI / 2, { def: 'r7' }); D.sfx('escaner'); botellaCalle(); } },
+      { t: 'dialogo', libre: true, l: [['DAVE', 'Otro. Este no corre: va barriendo la calle con el ojo.'], ['DAVE', 'Debajo de la pickup no me vería. O le doy algo más interesante que mirar.']] },
+      { t: 'evento', nombre: 'escondido', escondite: true, a: 'casa.coche',
+        obj: () => vr() ? 'Un robot escanea la calle: túmbate (stick abajo) y métete bajo la pickup, o lanza una botella lejos' : 'Un robot escanea la calle: túmbate (Z) bajo la pickup, o lanza una botella lejos (E coger · G lanzar)',
+        f0: D => { empezarEscaneo(D); D.caminar('r7s', [12, 72.6], .55); },
+        alt: { label: 'Meterte debajo de la pickup', a: 'casa.coche', r: 2.4 },
+        alAcabar: (D, m, d) => m.recordar('dave', d?.donde === 'distraccion' ? 'distrajo_al_robot' : 'se_escondio_bajo_la_pickup', 1) },
+      { t: 'escena', libre: true, escondite: true, l: [
+        { f: D => { if (!escaneo?.distraido) D.caminar('r7s', [17, 72.6], .6); } }, { espera: 5 }, // distraído: se queda husmeando el ruido
+        { npc: 'r7s', a: [36, 72.6], vel: .8, esperar: true, max: 12 },
+        { f: D => { pararEscaneo(); D.ocultar('r7s'); } }], rec: [R_('dave', 'aprendio_a_esconderse', 1)] },
+      { t: 'evento', nombre: 'salir_escondite', max: 2.5, si: m => m.recuerda('dave', 'se_escondio_bajo_la_pickup'), obj: 'Sal de debajo de la pickup' },
+      { t: 'dialogo', libre: true, l: [['DAVE', 'Si no me ven, no tengo que pelear. Apuntado.']] },
       { t: 'fn', f: D => D.bloquearCoche(false) },
       { t: 'subir', obj: 'Sube a la pickup' },
       { t: 'fn', f: D => D.robots(robotsCalle) },
@@ -383,7 +420,7 @@ export const ACTO1 = [
         f: D => { OB.rifle.visible = false; D.arma('x56d'); D.jugador.ammo.x56d = 0; } },
       { t: 'escena', l: [
         { n: 'HANK', t: 'Sin cargador. Aquí no sale nada cargado por la puerta. Primero el chaleco.', gesto: ['hank', 'senalar'] }] },
-      { t: 'evento', nombre: 'chaleco_puesto', obj: 'Deja que Hank te ponga el chaleco', alt: { label: 'Ponerte el chaleco', pos: () => npcs.hank.root.position, r: 2.4, alto: 1.9 } },
+      { t: 'evento', nombre: 'chaleco_puesto', alAcabar: D => { const c = D.jugador.cargadores ||= {}; c.x56d = [...(c.x56d || []), 30, 30]; D.say('Hank te mete dos cargadores en el chaleco'); }, obj: 'Deja que Hank te ponga el chaleco', alt: { label: 'Ponerte el chaleco', pos: () => npcs.hank.root.position, r: 2.4, alto: 1.9 } },
       { t: 'escena', l: [{ n: 'HANK', t: 'Dos portacargadores. Saca uno y mételo. Hasta que haga clic.', gesto: ['hank', 'manos'] }] },
       { t: 'evento', nombre: 'recargado', cond: D => D.jugador.ammo.x56d > 0, obj: () => vr() ? 'Saca un cargador del chaleco y mételo en la X-56D' : 'Recarga la X-56D (R)' },
       { t: 'escena', l: [
@@ -453,7 +490,7 @@ export const ACTO1 = [
   },
   // ───────────────────────────── CAPÍTULO 4 ─────────────────────────────
   {
-    id: 'c4', sub: 'Capítulo 5', titulo: 'La banda', nota: 'Casa de Dave · amanecer', hora: 'amanecer', caos: true, inicio: 'casa.entrada', armas: ['punos', 'piedra', 'x56d', 'cuchillo'], arma: 'x56d',
+    id: 'c4', sub: 'Capítulo 5', titulo: 'La banda', nota: 'Casa de Dave · amanecer', hora: 'amanecer', caos: true, inicio: 'casa.entrada', armas: ['punos', 'piedra', 'x56d', 'cuchillo'], arma: 'x56d', cargadores: { x56d: 1 },
     async prep(D) {
       ocultarOB(); foto(); dibujo(); D.coche('casa.coche'); D.barreraLab(true); D.clima('despejado', 0, 20);
       await D.npc('sarah', [18.5, 83.2], Math.PI, { mira: true });
@@ -602,7 +639,7 @@ export const ACTO1 = [
   },
   // ───────────────────────────── CAPÍTULO 5 ─────────────────────────────
   {
-    id: 'c5', sub: 'Capítulo 6', titulo: 'Asalto a la base', nota: 'Base de Peñas Negras · noche', hora: 'noche', caos: true, inicio: 'camion.inicio', armas: ['punos', 'piedra', 'x56d', 'cuchillo', 'pistola'], arma: 'x56d', ambiente: 'viento',
+    id: 'c5', sub: 'Capítulo 6', titulo: 'Asalto a la base', nota: 'Base de Peñas Negras · noche', hora: 'noche', caos: true, inicio: 'camion.inicio', armas: ['punos', 'piedra', 'x56d', 'cuchillo', 'pistola'], arma: 'x56d', cargadores: { x56d: 2, pistola: 1 }, ambiente: 'viento',
     async prep(D) {
       ocultarOB(); D.coche(null); D.barreraLab(true); D.clima('viento', .7);
       if (D.W.barrera) D.W.barrera.rotation.x = 0;

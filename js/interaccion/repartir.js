@@ -68,7 +68,7 @@ function casa() {
   // consola de la entrada con cajón: la linterna del cap. 2
   caja(.8, .04, .35, MD.madera, 23.4, .74, 79.88); for (const sx of [-.37, .37]) caja(.04, .74, .33, MD.madera, 23.4 + sx, 0, 79.88); caja(.76, .2, .02, MD.madera, 23.4, .52, 79.72);
   addCollider(23.0, 23.8, 79.7, 80.06, .78);
-  const cj = crearCajon({ x: 23.4, y: .66, z: 79.92, ry: 0, ancho: .6, alto: .1, fondo: .26, label: 'cajón de la entrada' }); cj.meter('linterna', -.1, 0, { ry: 1.5 }); cj.meter('rotulador', .15, .02, { ry: 1.6, v: 0x1a3cc8 });
+  const cj = crearCajon({ x: 23.4, y: .66, z: 79.92, ry: 0, ancho: .6, alto: .1, fondo: .26, label: 'cajón de la entrada' }); cj.meter('linterna', -.1, 0, { ry: 1.5 }); cj.meter('rotulador', .15, .02, { ry: 1.6, v: 0x1a3cc8 }); cj.meter('venda', .02, -.04);
   poner('libro', 23.6, .78, 79.9, { ry: .4, sinComprobar: true });
   // pizarra de tiza de la cocina (pared este) con su repisa, tiza y borrador
   crearSuperficie({ id: 'casa.tiza', tipo: 'tiza', w: .7, h: .5, px: 384, x: 25.82, y: 1.5, z: 82.1, ry: -Math.PI / 2 });
@@ -91,6 +91,8 @@ function lab() {
   // cajón de la mesa de Mike con la grabadora
   const cj = crearCajon({ x: 6.6, y: .66, z: -146.21, ry: 0, ancho: .5, alto: .12, fondo: .45, label: 'cajón de Mike' });
   const g = cj.meter('cinta', -.08, 0); if (g) g.lineas = LINEAS_CINTA; cj.meter('rotulador', .12, .05, { ry: 1.5, v: 0xc81a1a });
+  // segundo cajón de la mesa de Mike: venda (escasez: el lab no regala botiquines)
+  { const c2 = crearCajon({ x: 4.6, y: .66, z: -146.21, ry: 0, ancho: .5, alto: .12, fondo: .45, label: 'cajón de la mesa' }); c2.meter('venda', 0, 0); }
   // puerta trasera acristalada: entrar rompiendo el cristal (ruido 15 m) y quitando los trozos del marco
   W.puertaTraseraLab = crearVentana({ x: -8.5, y: 1.26, z: -147.8, w: 1.58, h: 2.5, ry: 0, label: 'puerta trasera acristalada' });
   poner('extintor', 11.2, 0, -134.5); poner('cajaMadera', 10.6, 0, -146.6); poner('silla', 4.8, 0, -145.4, { ry: Math.PI });
@@ -104,7 +106,7 @@ function tienda() {
   const cj = crearCajon({ x: -17.33, y: 1.11, z: -51.7, ry: -Math.PI / 2, ancho: .3, alto: .07, fondo: .26, label: 'caja registradora' }); cj.meter('municion', 0, 0, { ry: 1.57 });
   // taquilla de la tienda con botiquín y munición
   const tq = crearArmario({ x: -21.55, z: -46.2, ry: Math.PI / 2, w: .6, h: 1.8, d: .5, tipo: 'taquilla', baldas: [.9, 1.4], label: 'taquilla de Hank' });
-  tq.meter('botiquin', 0, .915, 0); tq.meter('municion', 0, 1.415, 0);
+  tq.meter('botiquin', 0, .915, 0); tq.meter('municion', 0, 1.415, 0); tq.meter('venda', .15, .915, 0);
   poner('extintor', -9.6, 0, -53.0); poner('bombona', -21.3, 0, -47.4); poner('bombona', -21.3, 0, -54.8, { v: 0x2a6ac0 });
   for (const [t, x, y, z, ry] of [['radio', -17.3, 1.06, -52.3, 1.4], ['lata', -17.1, 1.06, -49.7, 0], ['botella', -17.35, 1.06, -50.2, 0], ['llave', -16.95, 1.06, -50.9, .3], ['martillo', -17.2, 1.06, -47.9, 1.2]]) poner(t, x, y, z, { ry, sinComprobar: true });
   for (const [t, x, z] of [['caja', -12.5, -55.0], ['caja', -11.8, -45.0], ['tuberia', -19.6, -53.4], ['cajaMadera', -10.3, -44.0]]) poner(t, x, 0, z, { ry: rnd(-.4, .4) });
@@ -116,6 +118,9 @@ function calle() {
   for (let i = 0; i < 8 && !lleno(); i++) { const x = rnd(-40, 40); if (Math.abs(x - 20) < 2) continue; poner(['lata', 'botella', 'caja', 'cono'][i % 4], x, 0, rnd(73.8, 74.8), { ry: rnd(0, 6) }); }
 }
 function base() {
+  // taquilla de intendencia contra el barracón oeste: el único reabastecimiento del cap. 6 (1 cargador, 1 botiquín, 1 venda)
+  { const tq = crearArmario({ x: 124.62, z: -41.3, ry: -Math.PI / 2, w: .6, h: 1.8, d: .5, tipo: 'taquilla', baldas: [.9, 1.4], label: 'taquilla de intendencia' });
+    tq.meter('municion', 0, 1.415, 0); tq.meter('botiquin', 0, .915, 0); tq.meter('venda', .15, .915, 0); }
   // delante de los barracones (lado oeste, x ≈ 123,5): cajas, bombonas y lanzables (zona de sigilo del cap. 6)
   for (const [t, x, z, o] of [['cajaMadera', 123.6, -28.5], ['cajaMadera', 123.4, -29.3], ['cajaMadera', 123.5, -28.9, { y: .5 }], ['bombona', 124.0, -36.2], ['bombona', 124.2, -42.8],
     ['lata', 123.0, -38.5], ['botella', 123.2, -39.1], ['lata', 122.8, -44.9], ['botella', 123.1, -50.2], ['cono', 122.5, -25.0], ['cono', 122.5, -53.0], ['tuberia', 124.3, -47.5], ['caja', 123.8, -33.0], ['extintor', 124.5, -40.0]])

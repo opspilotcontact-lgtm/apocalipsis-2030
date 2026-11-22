@@ -65,7 +65,7 @@ function accionArma() {
   if (!J || !fisica()) return false; const id = J.P.w; if (!esFuego(id)) return false; const r = R[id];
   if (!r.dentro) return true;
   const car = cargadorArma(id); r.dentro = false; car.visible = false; J.P.ammo[id] = 0;
-  const caida = new THREE.Mesh(car.geometry, car.material); car.getWorldPosition(caida.position); car.getWorldQuaternion(caida.quaternion); scene.add(caida);
+  const caida = mallaCargador(id); car.getWorldPosition(caida.position); car.getWorldQuaternion(caida.quaternion); scene.add(caida);
   escombro(caida, new V3(0, -1.2, 0), { vida: 8, densidad: 1.5, giro: 3 }); mecanico('cargadorFuera', caida.position); buzz(J.rightC(), .4, 40);
   return true;
 }
@@ -79,7 +79,8 @@ function ajusteArma(o) {
   _up.set(0, 1, 0).applyQuaternion(o.quaternion);
   _m.lookAt(_r, _l, _up); o.quaternion.setFromRotationMatrix(_m);
 }
-const PUNTOS = { x56d: { guarda: new V3(0, .03, -.32), palanca: new V3(0, .1, .06) }, pistola: { guarda: new V3(0, -.03, .03), palanca: new V3(0, .06, .02) } };
+// X-56D (.glb): guardamanos bajo el cañón entre z -.28 y -.44 (por debajo de y ≈ .05), el cargador ocupa z -.27…-.11
+const PUNTOS = { x56d: { guarda: new V3(0, .06, -.36), palanca: new V3(0, .19, .06) }, pistola: { guarda: new V3(0, -.03, .03), palanca: new V3(0, .06, .02) } };
 const armaW = (id, k, o) => J.WOBJ[id].g.localToWorld(o.copy(PUNTOS[id][k]));
 const armaVisible = id => { const g = J.WOBJ[id]?.g; return !!g?.parent && g.visible !== false; };
 
@@ -104,13 +105,21 @@ export function agarrarRanura(m) {
   return false;
 }
 // ---------- Cargador en la mano ----------
+// el cargador por código del arma real es invisible (lo tapa el .glb): en la mano va una copia visible a su tamaño
+const matCargMano = new THREE.MeshStandardMaterial({ color: 0x1a1c20, roughness: .55, metalness: .4 });
+const geoCargReal = new THREE.BoxGeometry(.028, .16, .065);
+function mallaCargador(id) { const car = cargadorArma(id), real = J.WOBJ[id]?.g.userData.real && id === 'x56d'; return new THREE.Mesh(real ? geoCargReal : car.geometry, car.material.visible === false ? matCargMano : car.material); }
 function cogerCargador(m, id) {
   const car = cargadorArma(id); if (!car) return;
-  const mesh = new THREE.Mesh(car.geometry, car.material); mesh.position.set(0, -.02, -.05); mesh.rotation.x = -.3; m.c.grip.add(mesh);
-  m.cargador = { id, mesh, balas: J.WEAPONS[id].mag }; m.c.prop = { label: 'cargador' }; mecanico('funda', m.pos); buzz(m.c, .4, 30);
+  const balas = J.tomarCargador ? J.tomarCargador(id) : J.WEAPONS[id].mag;
+  if (balas == null) { buzz(m.c, .15, 15); import('../ui.js').then(u => u.say('El chaleco está vacío')).catch(() => {}); return; }
+  const mesh = mallaCargador(id); mesh.position.set(0, -.02, -.05); mesh.rotation.x = -.3; m.c.grip.add(mesh);
+  m.cargador = { id, mesh, balas }; m.c.prop = { label: 'cargador' }; mecanico('funda', m.pos); buzz(m.c, .4, 30);
 }
 function soltarCargador(m) {
   const cg = m.cargador; m.cargador = null; if (m.c) m.c.prop = null;
+  // soltarlo junto al chaleco lo devuelve a su bolsillo (si no, cae al suelo y se pierde con sus balas)
+  if (['chaleco1', 'chaleco2'].some(k => posRanura(k, tA).distanceTo(m.pos) < .2)) { J.cargadoresDe?.(cg.id).push(cg.balas); cg.mesh.removeFromParent(); mecanico('funda', m.pos); return; }
   const p = cg.mesh.getWorldPosition(new V3()), q = cg.mesh.getWorldQuaternion(new THREE.Quaternion()); scene.add(cg.mesh); cg.mesh.position.copy(p); cg.mesh.quaternion.copy(q);
   escombro(cg.mesh, m.vel.clone(), { vida: 10, densidad: 1.5, giro: 2 });
 }
@@ -142,7 +151,8 @@ export function actualizarArmas(dt, manos) {
   actualizarTorso(dt);
   // fundas visibles
   for (const id in fundas) fundas[id].visible = vr && P.inv.includes(id) && P.w !== id && !Vh?.car.occupied && !P.sentado;
-  for (const b of cargVis) b.visible = vr && (P.inv.includes('x56d') || P.inv.includes('pistola')) && !Vh?.car.occupied;
+  const nCarg = (P.cargadores?.[P.w] || []).length; cargVis.forEach((b, i) => { b.visible = vr && (P.inv.includes('x56d') || P.inv.includes('pistola')) && !Vh?.car.occupied; b.children[0].visible = i < nCarg; }); // el bolsillo vacío se ve vacío
+  const uS = J.WOBJ.x56d?.g.userData.uSinCarg; if (uS) uS.value = vr && !R.x56d.dentro ? 1 : 0;
   if (hombro.prop) hombro.prop.root.visible = vr || linternaEncendida() === hombro.prop;
   // vaciado: cerrojo atrás al disparar la última bala
   for (const id in R) { const r = R[id], a = P.ammo[id] ?? 0; if (r.dentro && r.prev > 0 && a === 0 && fisica() && G.opciones.recarga === 'fisica') r.cerrojoAtras = true; r.prev = a; const c = cargadorArma(id); if (c && !vr) c.visible = true; pintarLED(id, r.dentro ? a + (r.cerrojoAtras ? r.pend : 0) : 0, J.WEAPONS[id].mag); }

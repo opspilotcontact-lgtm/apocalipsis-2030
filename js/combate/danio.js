@@ -294,13 +294,39 @@ export function factorVelocidad(e) {
   return f;
 }
 
+// copia estática de la parte de cada SkinnedMesh que cuelga del hueso b (peso de su cadena > 0,5 en algún vértice
+// del triángulo), en la pose de ahora y centrada en «centro» (mundo). Mismo material: textura del personaje.
+function piezaMiembro(raiz, b, centro) {
+  const cadena = new Set(); b.traverse(x => { if (x.isBone) cadena.add(x); });
+  const grupo = new THREE.Group(); let n = 0; const v = new THREE.Vector3();
+  raiz.updateMatrixWorld(true);
+  raiz.traverse(sm => {
+    if (!sm.isSkinnedMesh || !sm.visible) return; const sk = sm.skeleton, idx = new Set(); sk.bones.forEach((bn, i) => { if (cadena.has(bn)) idx.add(i); }); if (!idx.size) return;
+    const g = sm.geometry, P = g.attributes.position, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight, UV = g.attributes.uv; if (!SI || !SW) return;
+    const peso = new Float32Array(P.count); for (let i = 0; i < P.count; i++) { let w = 0; for (let k = 0; k < 4; k++) if (idx.has(SI.getComponent(i, k))) w += SW.getComponent(i, k); peso[i] = w; }
+    const ind = g.index, nt = (ind ? ind.count : P.count) / 3, mapa = new Map(), pos = [], uv = [], tri = [];
+    sk.update?.();
+    const vid = i => { let j = mapa.get(i); if (j != null) return j; j = mapa.size; mapa.set(i, j); v.fromBufferAttribute(P, i); sm.applyBoneTransform(i, v); v.applyMatrix4(sm.matrixWorld).sub(centro); pos.push(v.x, v.y, v.z); if (UV) uv.push(UV.getX(i), UV.getY(i)); return j; };
+    for (let t = 0; t < nt; t++) { const a = ind ? ind.getX(t * 3) : t * 3, c = ind ? ind.getX(t * 3 + 1) : t * 3 + 1, d = ind ? ind.getX(t * 3 + 2) : t * 3 + 2;
+      if (Math.max(peso[a], peso[c], peso[d]) > .5) tri.push(vid(a), vid(c), vid(d)); }
+    if (!tri.length) return;
+    const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); if (UV) ng.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); ng.setIndex(tri); ng.computeVertexNormals();
+    const mat = Array.isArray(sm.material) ? sm.material[0] : sm.material;
+    const me = new THREE.Mesh(ng, mat); me.castShadow = true; grupo.add(me); n += tri.length / 3;
+  });
+  return n ? grupo : null;
+}
 // ---------- Personajes .glb con esqueleto (mixamorig): desmembrar escalando el hueso a 0 ----------
 // devuelve una cápsula con el material de la malla como miembro suelto (el .glb no se puede partir sin cortar la malla)
 export function desmembrarHueso(raiz, nombreBase, dir, material) {
   const H = huesosMixamo(raiz), b = H[nombreBase]; if (!b) return null;
   b.getWorldPosition(tA); const hijo = b.children.find(c => c.isBone); const L = hijo ? hijo.getWorldPosition(tB).distanceTo(tA) * 1.6 : .25;
+  // pieza real: los triángulos de las mallas con piel pesados a la cadena del hueso, copiados en la pose actual
+  let m = null; try { m = piezaMiembro(raiz, b, tA); } catch (e) { console.warn('[danio] pieza de miembro', e); }
   b.scale.setScalar(1e-4);
-  const m = new THREE.Mesh(new THREE.CapsuleGeometry(L * .16, L, 3, 8), material || matMunonSangre); m.position.copy(tA); raiz.parent?.add(m);
+  if (!m) m = new THREE.Mesh(new THREE.CapsuleGeometry(L * .16, L, 3, 8), material || matMunonSangre);
+  const tapa = new THREE.Mesh(new THREE.SphereGeometry(Math.max(.03, L * .14), 10, 8), matMunonSangre); tapa.scale.y = .45; m.add(tapa); // muñón del trozo
+  m.position.copy(tA); scene.add(m); // en el mundo: la pieza ya está en coordenadas de mundo alrededor del hueso
   escombro(m, new V3(dir.x * 3, 2.5, dir.z * 3), { vida: 14 });
   salpicar(tA, 24, 'sangre', null, 1.2); manchaSuelo(tA, .3); salpicarDetras(tA, dir, 1.4); emisores.push({ o: b.parent || b, t: 2.5, cd: 0, tipo: 'sangre' });
   return m;

@@ -19,6 +19,7 @@ import { agarrarRanura, soltarRanura, guardarEnHombro, guardarLinterna, hombro, 
 import { actualizarReloj, reloj } from './reloj.js';
 import { construirCoche, actualizarCoche, cabina } from './coche.js';
 import { repartir } from './repartir.js';
+import { actualizarCabinaOrion, cabinaOrion } from './cabina-orion.js';
 import { montarMenu, actualizarVineta } from './opciones.js';
 import { emitirRuido, escucharRuido, recientes as ruidosRecientes } from './ruido.js';
 import { linternaEncendida } from './objetos.js';
@@ -168,7 +169,7 @@ export function actualizarInteraccion(dt, jugador, o = {}) {
   actualizarInstrumentos(dt, dedos);
   actualizarCoche(dt, G.mode === 'vr' ? manosVR.filter(m => m.c.src && !m.sostiene).map(m => ({ clave: m.id, p: m.tip, c: m.c })) : []);
   actualizarSigilo(dt, jugador, todas); G.sigilo.linterna = !!linternaEncendida();
-  actualizarArmas(dt, manosVR); actualizarReloj(dt); actualizarVineta(dt);
+  actualizarArmas(dt, manosVR); actualizarReloj(dt); try { actualizarCabinaOrion(dt, manosVR); } catch (e) { console.warn('[cabina]', e); } actualizarVineta(dt);
   // física: cápsula del jugador y bolas de las manos (cinemáticas)
   if (cuerpoJ) { // un salto grande (teletransporte, cambio de capítulo) se coloca sin barrer: si no, la cápsula arrasa lo que hay en medio
     const dst = o.cuerpoJugador === false ? lejos : jugador, t = cuerpoJ.translation();
@@ -193,7 +194,7 @@ export function actualizarInteraccion(dt, jugador, o = {}) {
 // ---------- Depuración: window.__inter ----------
 export function estado() { return { sigilo: estadoSigilo(), ruidos: ruidosRecientes.length, ...estadoObjetos(), muebles: muebles.length, superficies: superficies.length, pianos: pianos.length, cristales: cristales.filter(c => !c.roto).length, fisica: FIS.listo, sostiene: manoPC.sostiene?.label || null, apuntado: apuntado?.object.userData.inter?.label || null, llamadas: renderer.info.render.calls, triangulos: renderer.info.render.triangles }; }
 export const depuracion = {
-  estado, props, muebles, superficies, pianos, cristales, ventanas, taquillas, manoPC, manosVR, reloj, cabina, armas: estadoArmas, ruidos: ruidosRecientes, emitirRuido,
+  estado, props, muebles, superficies, pianos, cristales, ventanas, taquillas, manoPC, manosVR, reloj, cabina, cabinaOrion, armas: estadoArmas, ruidos: ruidosRecientes, emitirRuido,
   coger(i) { const pr = typeof i === 'number' ? props[i] : props.find(p => p.tipo === i && p.activo() && p.estado !== 'sostenido'); if (!pr) return false; if (manoPC.sostiene) manoPC.sostiene.agarre.soltar(manoPC, false); actualizarManos(1 / 60); return pr.agarre.agarrar(manoPC); },
   soltar() { if (!manoPC.sostiene) return false; manoPC.sostiene.agarre.soltar(manoPC, false); return true; },
   lanzar() { return lanzarPC(); },
