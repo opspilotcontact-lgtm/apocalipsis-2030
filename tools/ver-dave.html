@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dave animado</title>
+<style>
+:root{color-scheme:dark}html,body{margin:0;height:100%;background:#0b0d12;color:#e9eef5;font:14px system-ui,sans-serif;overflow:hidden}
+#ui{position:fixed;left:12px;top:12px;background:rgba(8,12,22,.85);padding:12px 14px;border-radius:10px;max-width:320px}
+#ui b{display:block;margin-bottom:8px;font-size:15px}button{margin:3px 3px 0 0;padding:7px 12px;border-radius:8px;border:1px solid #333a48;background:#151b29;color:#e9eef5;cursor:pointer}
+button.on{background:#29e6ff;color:#04121a;border-color:transparent}#info{margin-top:8px;color:#9aa7b8;font-size:12px}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body>
+<div id="ui"><b>Dave · muestra de calidad</b><div id="anims"></div>
+<div style="margin-top:6px"><button id="luz">Luz: atardecer</button><button id="girar" class="on">Girar</button></div>
+<div id="info">Cargando…</div></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(Math.min(devicePixelRatio, 2)); r.setSize(innerWidth, innerHeight);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, .05, 100); cam.position.set(1.6, 1.5, 3.2);
+const ctl = new OrbitControls(cam, r.domElement); ctl.target.set(0, 1, 0); ctl.enableDamping = true;
+addEventListener('resize', () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); r.setSize(innerWidth, innerHeight); });
+const suelo = new THREE.Mesh(new THREE.CircleGeometry(6, 48), new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: .9 })); suelo.rotation.x = -Math.PI / 2; suelo.receiveShadow = true; scene.add(suelo);
+const sol = new THREE.DirectionalLight(0xffd2a0, 2.5); sol.position.set(-3, 4, 3); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048); scene.add(sol);
+const pm = new THREE.PMREMGenerator(r);
+const HDR = [['atardecer', 'venice_sunset', 0xffb070, 2.4], ['día nublado', 'kloofendal_overcast_puresky', 0xffffff, 1.6], ['noche', 'dikhololo_night', 0x9ab4ff, .8], ['amanecer', 'kiara_1_dawn', 0xffc090, 2]];
+let hi = 0; const cache = {};
+async function luz(i) { const [n, f, c, k] = HDR[i]; document.getElementById('luz').textContent = 'Luz: ' + n;
+  if (!cache[f]) { const t = await new RGBELoader().loadAsync(`../assets/hdri/${f}_1k.hdr`); t.mapping = THREE.EquirectangularReflectionMapping; cache[f] = { env: pm.fromEquirectangular(t).texture, bg: t }; }
+  scene.environment = cache[f].env; scene.background = cache[f].bg; scene.backgroundBlurriness = .5; scene.backgroundIntensity = .6; sol.color.setHex(c); sol.intensity = k; }
+document.getElementById('luz').onclick = () => { hi = (hi + 1) % HDR.length; luz(hi); };
+let girar = true; document.getElementById('girar').onclick = e => { girar = !girar; e.target.classList.toggle('on', girar); };
+const ktx = new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/').detectSupport(r);
+const loader = new GLTFLoader().setKTX2Loader(ktx).setMeshoptDecoder(MeshoptDecoder);
+let mixer, acciones = {}, actual, modelo;
+try {
+  await luz(0);
+  const g = await loader.loadAsync('../assets/personajes/Dave_animado.glb');
+  modelo = g.scene; modelo.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); scene.add(modelo);
+  mixer = new THREE.AnimationMixer(modelo);
+  const cont = document.getElementById('anims');
+  for (const clip of g.animations) { acciones[clip.name] = mixer.clipAction(clip); const b = document.createElement('button'); b.textContent = { Idle: 'Respirar', Walk: 'Caminar', HitHead: 'Golpe en la cabeza' }[clip.name] || clip.name; b.onclick = () => play(clip.name, b); cont.appendChild(b); }
+  play('Idle', cont.firstChild);
+  let tris = 0; modelo.traverse(o => { if (o.isMesh) tris += o.geometry.index ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3; });
+  document.getElementById('info').textContent = `${Math.round(tris).toLocaleString()} triángulos · ${g.animations.length} animaciones · texturas KTX2 · arrastrá para girar la cámara`;
+} catch (e) { document.getElementById('info').textContent = 'Error: ' + e.message; console.error(e); }
+function play(n, btn) { const a = acciones[n]; if (!a) return; document.querySelectorAll('#anims button').forEach(b => b.classList.remove('on')); btn?.classList.add('on');
+  a.reset(); a.setLoop(n === 'HitHead' ? THREE.LoopOnce : THREE.LoopRepeat); a.clampWhenFinished = true; a.fadeIn(.25).play(); if (actual && actual !== a) actual.fadeOut(.25); actual = a;
+  if (n === 'HitHead') mixer.addEventListener('finished', function f() { mixer.removeEventListener('finished', f); play('Idle', document.querySelector('#anims button')); }); }
+const clock = new THREE.Clock();
+r.setAnimationLoop(() => { const dt = clock.getDelta(); mixer?.update(dt); if (girar && modelo) modelo.rotation.y += dt * .35; ctl.update(); r.render(scene, cam); });
+</script></body></html>

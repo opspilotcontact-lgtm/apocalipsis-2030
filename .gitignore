@@ -1,0 +1,6 @@
+# Originales pesados y de terceros (no se redistribuyen): solo se publican los créditos
+assets_src/*
+!assets_src/CREDITOS.md
+node_modules/
+*.blend1
+.DS_Store

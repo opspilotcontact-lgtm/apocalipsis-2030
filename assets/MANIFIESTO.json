@@ -1,0 +1,147 @@
+{
+  "generado": "2026-11-22",
+  "pipeline": "tools/README.md",
+  "cargar": "GLTFLoader + MeshoptDecoder + KTX2Loader(transcoder https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/); *_webp.glb solo necesita MeshoptDecoder",
+  "estado": "MUESTRA de control de calidad: solo Dave y R7_partes finalizados. Hank, Unidad01, El_Rey, Coloso y Unidad01_partes estan horneados en assets_src/derivados/*_crudo.glb pero NO finalizados.",
+  "assets": [
+    {
+      "path": "assets/personajes/Dave.glb",
+      "fallback": "assets/personajes/Dave_webp.glb",
+      "tipo": "personaje estatico (A-pose, sin rig)",
+      "tris": 22000,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 2048",
+        "metallicRoughness": "KTX2 ETC1S 2048 (G=rough, B=metal)",
+        "normal": "KTX2 UASTC 2048"
+      },
+      "bytes": {
+        "ktx2": 5431000,
+        "webp": 1447000
+      },
+      "altura_m": 1.8,
+      "bounds_m": [
+        0.812,
+        1.8,
+        0.403
+      ],
+      "orientacion": "cara a +Z, pies en y=0",
+      "skin": false,
+      "animaciones": [],
+      "anclas": [],
+      "lod": "assets/personajes/Dave_LOD1.glb"
+    },
+    {
+      "path": "assets/personajes/Dave_animado.glb",
+      "fallback": "assets/personajes/Dave_animado_webp.glb",
+      "tipo": "personaje riggeado (Mixamo auto-rigger, 41 huesos mixamorig:*)",
+      "tris": 22000,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 2048",
+        "metallicRoughness": "KTX2 ETC1S 2048",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "bytes": {
+        "ktx2": 2611000,
+        "webp": 1384000
+      },
+      "altura_m": 1.8,
+      "orientacion": "cara a +Z, pies en y=0 (raiz Dave_Armature rot +90X, escala 0.01)",
+      "skin": true,
+      "joints": 41,
+      "animaciones": {
+        "Idle": {
+          "duracion_s": 9.97
+        },
+        "Walk": {
+          "duracion_s": 1.07,
+          "en_sitio": true,
+          "velocidad_raiz_mps": 1.6166
+        },
+        "HitHead": {
+          "duracion_s": 1.57
+        }
+      },
+      "anclas": []
+    },
+    {
+      "path": "assets/personajes/Dave_LOD1.glb",
+      "fallback": "assets/personajes/Dave_LOD1_webp.glb",
+      "tipo": "LOD1 / NPC",
+      "tris": 12000,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 1024",
+        "metallicRoughness": "KTX2 ETC1S 1024",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "bytes": {
+        "ktx2": 1657000,
+        "webp": 640000
+      },
+      "altura_m": 1.8,
+      "skin": false,
+      "animaciones": [],
+      "anclas": []
+    },
+    {
+      "path": "assets/robots/R7_partes.glb",
+      "fallback": "assets/robots/R7_partes_webp.glb",
+      "tipo": "robot desmembrable (15 piezas rigidas hijas de huesos mixamorig:*)",
+      "tris": 55762,
+      "texturas": {
+        "baseColor": "KTX2 ETC1S 1024 (rusty_metal_02, tileable)",
+        "metallicRoughness": "KTX2 ETC1S 1024",
+        "normal": "KTX2 UASTC 1024"
+      },
+      "materiales": [
+        "M_Soldado_R7_Carcasa",
+        "M_Soldado_R7_Articulaciones",
+        "M_Soldado_R7_Emisivo",
+        "M_Corte"
+      ],
+      "bytes": {
+        "ktx2": 2758000,
+        "webp": 1688000
+      },
+      "altura_m": 1.81,
+      "pose_reposo": "T-pose",
+      "skin": false,
+      "nota_skin": "sin SkinnedMesh: cada pieza es un Mesh hijo de su hueso; extras/userData = {pieza, hueso}",
+      "animaciones": [
+        "Andar",
+        "Asentir",
+        "Correr",
+        "NegarCabeza",
+        "PoseAbatido",
+        "PoseSigilo",
+        "Reposo"
+      ],
+      "piezas": {
+        "Pieza_Cabeza": "mixamorig:Head",
+        "Pieza_Torso": "mixamorig:Spine2",
+        "Pieza_Pelvis": "mixamorig:Hips",
+        "Pieza_BrazoSup_L": "mixamorig:LeftArm",
+        "Pieza_Antebrazo_L": "mixamorig:LeftForeArm",
+        "Pieza_Mano_L": "mixamorig:LeftHand",
+        "Pieza_BrazoSup_R": "mixamorig:RightArm",
+        "Pieza_Antebrazo_R": "mixamorig:RightForeArm",
+        "Pieza_Mano_R": "mixamorig:RightHand",
+        "Pieza_Muslo_L": "mixamorig:LeftUpLeg",
+        "Pieza_Pierna_L": "mixamorig:LeftLeg",
+        "Pieza_Pie_L": "mixamorig:LeftFoot",
+        "Pieza_Muslo_R": "mixamorig:RightUpLeg",
+        "Pieza_Pierna_R": "mixamorig:RightLeg",
+        "Pieza_Pie_R": "mixamorig:RightFoot"
+      },
+      "anclas": []
+    }
+  ],
+  "derivados_mixamo": {
+    "Dave": "assets_src/derivados/Dave_mixamo.fbx",
+    "pendientes_de_visto_bueno": [
+      "assets_src/derivados/Hank_mixamo.fbx",
+      "assets_src/derivados/Unidad01_mixamo.fbx",
+      "assets_src/derivados/El_Rey_mixamo.fbx",
+      "assets_src/derivados/Coloso_mixamo.fbx"
+    ]
+  }
+}

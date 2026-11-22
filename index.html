@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Apocalipsis 2030</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--ink:#e9eef5;--mut:#9aa7b8;--cy:#29e6ff;--red:#ff3b1f;--amb:#ffcf6a;--pan:rgba(8,12,22,.84)}
+[hidden]{display:none!important}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;background:#05070d;color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif;overflow:hidden}
+canvas{display:block}
+h1,h2,b,button,.k{font-family:"Chakra Petch",system-ui,sans-serif}
+#menu{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:radial-gradient(ellipse at 50% 40%,rgba(5,8,16,.35),rgba(5,8,16,.92));overflow:auto}
+#menu .card{width:min(900px,100%);background:var(--pan);border:1px solid rgba(41,230,255,.22);border-radius:14px;padding:clamp(18px,3vw,30px);backdrop-filter:blur(6px)}
+h1{margin:0;font-size:clamp(34px,6vw,56px);line-height:1.02;letter-spacing:.02em}
+h1 span{color:var(--red)}
+.sub{color:var(--mut);margin:.35em 0 1.1em}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+button{font-size:16px;font-weight:700;min-height:44px;padding:0 18px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:#141b2b;color:var(--ink);cursor:pointer}
+button:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+button.pri{background:var(--cy);color:#04121a;border-color:transparent}
+button.vr{background:#1d0f12;border-color:var(--red);color:#ffd9d2}
+button:disabled{opacity:.45;cursor:not-allowed}
+#vrNote{color:var(--mut);font-size:13px;margin:.6em 0 0}
+h2{font-size:16px;margin:18px 0 8px;color:var(--cy);letter-spacing:.04em}
+#caps{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+#caps .cap{display:grid;gap:2px;text-align:left;min-height:56px;padding:8px 12px;font-size:15px;line-height:1.2}
+#caps .cap span{font:500 12px Inter,sans-serif;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+#caps .cap.sel{border-color:var(--amb);box-shadow:inset 3px 0 0 var(--amb)}
+.set{margin-top:14px}.set button{font-size:14px;min-height:38px;font-weight:500}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.cols ul{margin:0;padding:0;list-style:none}
+.cols li{display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
+.k{flex:none;width:9.5em;color:#fff;font-weight:700}
+.foot{color:var(--mut);font-size:12.5px;margin-top:14px}
+#cargando{color:var(--amb);font-family:"Chakra Petch";margin-top:8px}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none}
+#cross{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px;border:2px solid rgba(255,255,255,.8);border-radius:50%;transition:transform .08s,border-color .08s}
+#cross::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px;background:#fff;border-radius:50%}
+#cross.hit{border-color:#ff5a3a;transform:scale(1.35)}
+.box{position:absolute;bottom:18px;background:var(--pan);border-radius:10px;padding:10px 14px}
+#hpBox{left:18px;width:240px}
+#hpBox span,#wBox span{color:var(--mut);font-size:13px}
+.bar{height:8px;background:#1d2433;border-radius:4px;margin:6px 0 2px;overflow:hidden}
+#hpFill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#29e6ff,#7cf3c9)}
+#hpNum{font-size:22px}
+#wBox{right:18px;text-align:right;min-width:210px}
+#wName{display:block;color:var(--mut);font-size:13px}
+#ammo{display:block;font-size:24px}
+#obj{position:absolute;left:18px;top:18px;max-width:min(460px,70vw);background:var(--pan);border-left:3px solid var(--amb);padding:8px 14px;border-radius:0 10px 10px 0;font-family:"Chakra Petch";font-weight:700;color:var(--amb)}
+#obj::before{content:"OBJETIVO";display:block;font:600 11px Inter,sans-serif;letter-spacing:.12em;color:var(--mut)}
+#hint{position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);font-family:"Chakra Petch";font-weight:700;color:#fff;text-shadow:0 1px 4px #000;text-align:center;white-space:pre-line}
+#toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:var(--pan);border:1px solid rgba(255,59,31,.4);padding:8px 16px;border-radius:10px;font-family:"Chakra Petch";font-weight:700;opacity:0;transition:opacity .25s;white-space:nowrap}
+#toast.on{opacity:1}
+#sub{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);width:min(760px,92vw);background:rgba(6,9,16,.84);border-radius:12px;padding:12px 18px}
+#subN{display:block;font-family:"Chakra Petch";font-weight:700;font-size:15px;letter-spacing:.06em}
+#subT{font-size:19px;line-height:1.4}
+#card{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .6s;width:min(820px,94vw)}
+#card.on{opacity:1}
+#cardS{color:var(--mut);font-size:15px;letter-spacing:.14em;text-transform:uppercase}
+#cardT{display:block;font-family:"Chakra Petch";font-weight:700;font-size:clamp(34px,6vw,64px);line-height:1.05;text-shadow:0 2px 20px #000}
+#cardN{color:var(--cy);font-size:16px}
+#det{position:absolute;left:50%;top:64px;transform:translateX(-50%);width:220px;text-align:center;font:700 12px "Chakra Petch";letter-spacing:.14em;color:var(--mut)}
+#det .bar{height:6px}
+#detFill{display:block;height:100%;width:0;background:#ffb000}
+#det.visto{color:var(--red)}#det.visto #detFill{background:var(--red)}
+#hurt{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 160px 40px rgba(255,20,0,.85);opacity:0}
+@media(max-width:600px){#hpBox{width:170px}#toast{white-space:normal;width:90%}#sub{bottom:110px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs"}}</script>
+</head>
+<body>
+<div id="hurt"></div>
+<div id="hud" hidden>
+  <div id="cross"></div>
+  <div id="obj" hidden></div>
+  <div id="hint"></div>
+  <div id="toast"></div>
+  <div id="det" hidden>SIGILO<div class="bar"><i id="detFill"></i></div></div>
+  <div id="sub" hidden><b id="subN"></b><span id="subT"></span></div>
+  <div id="card"><span id="cardS"></span><b id="cardT"></b><span id="cardN"></span></div>
+  <div id="hpBox" class="box"><span>Salud</span><div class="bar"><i id="hpFill"></i></div><b id="hpNum">100</b></div>
+  <div id="wBox" class="box"><span id="wName">Puños</span><b id="ammo">∞</b></div>
+</div>
+<div id="menu">
+  <div class="card">
+    <h1>APOCALIPSIS <span>2030</span></h1>
+    <p class="sub">Acto I · La Tierra cae. Lo que despierta no eres tú.</p>
+    <div class="row">
+      <button class="pri" id="continuar">Empezar el Acto I</button>
+      <button class="vr" id="enterVR" disabled>Entrar en VR</button>
+    </div>
+    <p id="vrNote">Comprobando si este navegador tiene WebXR…</p>
+    <p id="cargando">Cargando el mundo…</p>
+    <h2>CAPÍTULOS</h2>
+    <div id="caps"></div>
+    <div class="row set">
+      <button id="tShadow">Sombras: sí</button>
+      <button id="tQual">Calidad: alta</button>
+      <button id="tVoz">Voces: no</button>
+      <button id="borrar">Borrar progreso</button>
+    </div>
+    <div class="cols">
+      <div><h2>PC</h2><ul>
+        <li><span class="k">WASD · Shift · Espacio</span>moverse · correr · saltar</li>
+        <li><span class="k">Ratón · clic</span>mirar · golpear o disparar</li>
+        <li><span class="k">E</span>usar, coger, subir al coche, pasar diálogo</li>
+        <li><span class="k">1–4 · rueda · R</span>armas · recargar</li>
+        <li><span class="k">En la pickup</span>W/S gas y freno · A/D girar · Espacio freno · H claxon</li>
+      </ul></div>
+      <div><h2>META QUEST</h2><ul>
+        <li><span class="k">Stick izq. · dcho.</span>moverse (pulsado corre) · girar 30°</li>
+        <li><span class="k">Grip</span>agarrar (casco, piedra, rifle)</li>
+        <li><span class="k">Golpe real</span>puño izquierdo, piedra y cuchillo en la derecha</li>
+        <li><span class="k">Gatillo dcho.</span>disparar la X-56D (láser de mira)</li>
+        <li><span class="k">A</span>usar · subir/bajar · pasar diálogo · recargar</li>
+        <li><span class="k">B / Y · X</span>cambiar arma · ángulo del arma</li>
+      </ul></div>
+    </div>
+    <p class="foot">Base jugable en WebXR. Entorno por código; personajes y vehículos con los modelos 3D del dossier. Casco neural: «Damaged Helmet» de theblueturtle_, CC BY 4.0. Robots: rig propio.</p>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

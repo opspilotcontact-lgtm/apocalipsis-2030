@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prueba de interacción</title>
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;height:100%;background:#05070d;color:#e9eef5;font:14px/1.45 system-ui,sans-serif;overflow:hidden}
+canvas{display:block}
+#panel{position:fixed;left:12px;top:12px;width:min(340px,calc(100vw - 24px));background:rgba(8,12,22,.86);border:1px solid rgba(41,230,255,.25);border-radius:10px;padding:10px 12px}
+#panel h1{font-size:15px;margin:0 0 6px;letter-spacing:.04em}
+.fila{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+button{font:600 12px system-ui;min-height:30px;padding:0 9px;border-radius:7px;border:1px solid rgba(255,255,255,.18);background:#141b2b;color:#e9eef5;cursor:pointer}
+#info{font:12px/1.4 ui-monospace,monospace;color:#9aa7b8;white-space:pre-line;margin-top:6px}
+#cross{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px;border:2px solid rgba(255,255,255,.85);border-radius:50%;pointer-events:none}
+#hint{position:fixed;left:50%;top:calc(50% + 26px);transform:translateX(-50%);font-weight:700;text-shadow:0 1px 4px #000;pointer-events:none;white-space:nowrap}
+#toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:rgba(8,12,22,.85);padding:6px 14px;border-radius:8px;opacity:0;transition:opacity .25s}
+#toast.on{opacity:1}
+#sub{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);width:min(700px,92vw);background:rgba(6,9,16,.84);border-radius:10px;padding:10px 16px}
+#subN{display:block;font-weight:700}
+.peq{color:#9aa7b8;font-size:12px}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs"}}</script>
+</head>
+<body>
+<div id="panel">
+  <h1>PRUEBA DE INTERACCIÓN</h1>
+  <div class="fila">
+    <button id="bRaton">Jugar con ratón (bloquear)</button>
+    <button id="bBotella">Lanzar botella</button>
+    <button id="bPizarra">Escribir pizarra</button>
+    <button id="bPiano">Tocar piano</button>
+    <button id="bPuerta">Puerta / cajón</button>
+    <button id="bDisparo">Disparar a la mira</button>
+  </div>
+  <div class="peq">WASD moverse · flechas o ratón (bloqueado) mirar · E coger/soltar/abrir · clic lanzar o usar · G lanzar · F usar</div>
+  <div id="info">Cargando física…</div>
+</div>
+<div id="cross"></div><div id="hint"></div><div id="toast"></div>
+<div id="sub" hidden><b id="subN"></b><span id="subT"></span></div>
+<script type="module">
+import { THREE, V3, G, scene, camera, renderer, dolly, head, vm, block, flat, std, aplicarHora, sun, sunDir, collideCircle, groundAt } from '../js/nucleo.js';
+import { actualizarFx, audio } from '../js/fx.js';
+import { pasoFisica, actualizarPiezas, listo, piezas } from '../js/combate/fisica.js';
+import { antesJugador, actualizarInteraccion, entradaPC, crearProp, crearSuperficie, crearPiano, crearPuerta, crearCajon, crearArmario, crearCristal, depuracion as D } from '../js/interaccion/index.js';
+
+// ---------- Sala ----------
+const M = { tiles: std({ color: 0x8a8c90, roughness: .8 }), pared: std({ color: 0xd8d0c0, roughness: .9 }), wood: std({ color: 0x8a6440, roughness: .7 }) };
+aplicarHora('dia'); G.fogOn = false; aplicarHora('dia');
+vm.visible = false;
+import('../js/vehiculos.js').then(v => { v.car.g.visible = false; }).catch(() => {}); // la pickup aparece en el origen al cargar el jugador
+G.playing = true; G.mode = 'pc'; G.banco = true;
+flat(0, 0, 30, 30, M.tiles, .001, 0, 2);
+block(-3.5, -4, 5, .3, 3, M.pared); block(4.25, -4, 3.5, .3, 3, M.pared); block(2, -4, 1, .3, .9, M.pared, { y: 2.1, collide: false }); // pared del fondo con hueco de puerta (x 1.5..2.5)
+block(-6, 0, .3, 8, 3, M.pared); block(6, 0, .3, 8, 3, M.pared);
+block(0, -1.6, 1.6, .8, .75, M.wood);           // mesa
+block(-4.5, -1, .7, 2, .9, M.wood);             // mostrador (el cajón va metido en él)
+block(3.2, -3, 1, .6, .75, M.wood);             // mesita del monitor
+sun.target.position.set(0, 0, 0); sun.position.copy(sunDir).multiplyScalar(70);
+
+// ---------- Interactivos ----------
+const mesa = .75, sobre = (t, x, z, o) => crearProp(t, x, mesa, z, o);
+sobre('botella', -.62, -1.62); sobre('botella', -.48, -1.78, { v: 0x5a3416 }); sobre('lata', -.32, -1.5); sobre('taza', -.12, -1.72); sobre('plato', .15, -1.5);
+sobre('libro', .42, -1.78, { ry: .3 }); sobre('libro', .42, -1.78 + 0, { ry: .1, v: 0x1e3a6a }).root.position.y += .036;
+sobre('linterna', .62, -1.42, { ry: .4 }); sobre('radio', .58, -1.85); sobre('rotulador', -.62, -1.3, { ry: 1.4 }); sobre('rotulador', -.5, -1.32, { ry: 1.5, v: 0x1a3cc8 }); sobre('borrador', -.3, -1.3);
+sobre('martillo', .2, -1.3, { ry: 1.2 }); sobre('llave', -.02, -1.3, { ry: 1.7 });
+crearProp('caja', -1.6, 0, 1); crearProp('caja', -1.6, .3, 1, { ry: .3 }); crearProp('pelota', 1, 0, 1.6); crearProp('cono', 2.6, 0, 2); crearProp('silla', -.7, 0, -.6, { ry: Math.PI });
+crearProp('cajaMadera', 3.6, 0, 0); crearProp('tuberia', 1.4, 0, -.9, { ry: .6 }); crearProp('monitor', 3.2, .75, -3.05);
+crearSuperficie({ id: 'banco.pizarra', tipo: 'pizarra', w: 1.8, h: 1.1, px: 512, x: -2.5, y: 1.5, z: -3.835 });
+crearSuperficie({ id: 'banco.cuaderno', tipo: 'cuaderno', w: .21, h: .3, px: 256, x: .0, y: mesa + .004, z: -1.85, rx: -Math.PI / 2, ry: .15 });
+crearPiano({ x: -5.55, z: 1.2, ry: Math.PI / 2 });
+const puerta = crearPuerta({ x: 1.5, z: -4, ancho: 1, alto: 2.1, sentido: 1, label: 'puerta' });
+const cajon = crearCajon({ x: -4.375, y: .74, z: -1, ry: Math.PI / 2, ancho: .55, alto: .14, fondo: .45, label: 'cajón' });
+cajon.meter('cinta', -.1, 0); cajon.meter('botiquin', .1, .05, { ry: Math.PI / 2 });
+const nevera = crearArmario({ x: 5.45, z: -2.2, ry: -Math.PI / 2, w: .7, h: 1.8, d: .6, tipo: 'nevera', baldas: [.55, 1.0, 1.4] });
+nevera.meter('lata', -.15, 1.015, .05); nevera.meter('lata', 0, 1.015, .05, { v: 0x1a4fa0 }); nevera.meter('botella', .15, .565, 0);
+crearCristal(1.2, .8, 5.83, 1.4, 1.2, -Math.PI / 2);
+
+// ---------- Cámara de PC ----------
+let yaw = 0, pitch = -.25; dolly.position.set(0, 0, 2.2);
+const keys = {}, cvs = renderer.domElement;
+entradaPC(cvs);
+addEventListener('keydown', e => { keys[e.code] = true; audio(); });
+addEventListener('keyup', e => { keys[e.code] = false; });
+cvs.addEventListener('mousedown', () => audio());
+document.getElementById('bRaton').onclick = () => { audio(); cvs.requestPointerLock?.(); };
+document.addEventListener('mousemove', e => { if (document.pointerLockElement !== cvs) return; yaw -= e.movementX * .0022; pitch = Math.max(-1.4, Math.min(1.4, pitch - e.movementY * .0022)); });
+// depuración: mirar a un punto / ir a un sitio
+window.__mirar = (x, y, z) => { camera.updateWorldMatrix(true, false); const c = camera.getWorldPosition(new V3()), d = new V3(x - c.x, y - c.y, z - c.z); yaw = Math.atan2(-d.x, -d.z); pitch = Math.atan2(d.y, Math.hypot(d.x, d.z)); dolly.rotation.y = yaw; head.rotation.x = pitch; camera.updateWorldMatrix(true, false); };
+window.__ir = (x, z) => { dolly.position.set(x, 0, z); };
+window.__esperar = ms => new Promise(r => setTimeout(r, ms));
+
+// demos de los botones (también sirven a la verificación automática)
+const demos = {
+  async bBotella() { __ir(-.5, -.6); __mirar(-.62, .9, -1.62); await __esperar(120); D.coger('botella'); await __esperar(300); __mirar(-3, 1.5, -3.9); await __esperar(200); D.lanzar(); },
+  async bPizarra() { __ir(-2.5, -2.6); __mirar(-2.5, 1.5, -3.83); await __esperar(100); D.trazo('banco.pizarra', Array.from({ length: 40 }, (_, i) => [-.6 + i * .03, .25 * Math.sin(i * .4)])); D.trazo('banco.pizarra', [[-.6, -.3], [-.3, -.1], [0, -.3], [.3, -.1], [.6, -.3]], 'rotulador'); },
+  async bPiano() { __ir(-4.3, 1.2); __mirar(-5.3, .74, 1.2); for (const n of [60, 64, 67, 72, 67, 64, 60]) { D.tecla(n, 260); await __esperar(220); } },
+  async bPuerta() { __ir(1.4, -2.2); __mirar(2.43, 1, -3.95); await __esperar(100); D.e(); await __esperar(900); __ir(-3.2, -1); __mirar(-4.1, .75, -1); await __esperar(100); D.e(); },
+  async bDisparo() { D.disparar(); }
+};
+for (const k in demos) document.getElementById(k).onclick = () => { audio(); demos[k](); };
+window.__demos = demos;
+
+const info = document.getElementById('info');
+listo.then(ok => { info.textContent = ok ? 'Física lista.' : 'Sin Rapier: física falsa.'; });
+const clock = new THREE.Clock(), feet = new V3(); let infoT = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(.05, clock.getDelta()); G.time += dt;
+  if (keys.ArrowLeft) yaw += dt * 2; if (keys.ArrowRight) yaw -= dt * 2; if (keys.ArrowUp) pitch = Math.min(1.4, pitch + dt * 1.5); if (keys.ArrowDown) pitch = Math.max(-1.4, pitch - dt * 1.5);
+  const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  dolly.position.x += (-Math.sin(yaw) * f + Math.cos(yaw) * s) * 3 * dt; dolly.position.z += (-Math.cos(yaw) * f - Math.sin(yaw) * s) * 3 * dt;
+  collideCircle(dolly.position, .35, 0);
+  dolly.rotation.y = yaw; head.rotation.x = pitch;
+  camera.getWorldPosition(G.CAM);
+  antesJugador(dt);
+  actualizarInteraccion(dt, feet.copy(dolly.position));
+  pasoFisica(dt); actualizarPiezas(dt);
+  actualizarFx(dt);
+  renderer.render(scene, camera);
+  if ((infoT -= dt) <= 0) { infoT = .5; const e = D.estado(); info.textContent = `física: ${e.fisica ? 'Rapier' : '—'} · objetos ${e.objetos} · cuerpos ${e.cuerpos} (despiertos ${e.despiertos}) · fragmentos ${piezas.length}\nllamadas de dibujo ${e.llamadas} · triángulos ${e.triangulos}\nen la mano: ${e.sostiene || '—'} · mira: ${e.apuntado || '—'}`; }
+});
+</script>
+</body>
+</html>

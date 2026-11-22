@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prueba de combate</title>
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;height:100%;background:#05070d;color:#e9eef5;font:14px/1.45 system-ui,sans-serif;overflow:hidden}
+canvas{display:block}
+#panel{position:fixed;left:12px;top:12px;width:min(330px,calc(100vw - 24px));background:rgba(8,12,22,.86);border:1px solid rgba(41,230,255,.25);border-radius:10px;padding:10px 12px}
+#panel h1{font-size:15px;margin:0 0 6px;letter-spacing:.04em}
+.fila{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+button{font:600 13px system-ui;min-height:32px;padding:0 10px;border-radius:7px;border:1px solid rgba(255,255,255,.18);background:#141b2b;color:#e9eef5;cursor:pointer}
+button.on{background:#29e6ff;color:#04121a;border-color:transparent}
+#info{font:12px/1.4 ui-monospace,monospace;color:#9aa7b8;white-space:pre-line;margin-top:6px;max-height:40vh;overflow:auto}
+#mira{position:fixed;left:0;top:0;width:14px;height:14px;margin:-7px;border:2px solid #fff;border-radius:50%;pointer-events:none;mix-blend-mode:difference}
+.peq{color:#9aa7b8;font-size:12px}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs"}}</script>
+</head>
+<body>
+<div id="panel">
+  <h1>PRUEBA DE COMBATE</h1>
+  <div class="fila" id="armas"></div>
+  <div class="fila">
+    <button id="bRag">Ragdoll a todos</button>
+    <button id="bMonton">Montón</button>
+    <button id="bQuietos" class="on">Quietos</button>
+    <button id="bReset">Reiniciar</button>
+    <button id="bEdad">Heridas +60 s</button>
+    <button id="bSold">Soldado .glb</button>
+  </div>
+  <div class="peq">Clic: disparar/golpear donde apunta el ratón · arrastrar con botón derecho: girar · WASD: moverse</div>
+  <div id="info">Cargando física…</div>
+</div>
+<div id="mira"></div>
+<script type="module">
+import { THREE, V3, G, scene, camera, renderer, dolly, head, vm, block, flat, crate, M, aplicarHora, sun, sunDir } from '../js/nucleo.js';
+import { car } from '../js/vehiculos.js';
+import { actualizarFx, audio, sfx, tracer } from '../js/fx.js';
+import { P, applyHit } from '../js/jugador.js';
+import { spawn, enemies, damageEnemy, enemyMeshes, corpseMeshes, actualizarEnemigos, limpiarEnemigos } from '../js/enemigos.js';
+import { FIS, listo, cadaveres, golpearCadaver, estadoRagdolls, fijarSuperficies, prepararPiel, golpearSkinned, crearRagdoll, estadoAtlas, nMarcas, salpicar } from '../js/combate/index.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { capas } from '../js/nucleo.js';
+import { piezas } from '../js/combate/fisica.js';
+
+// ---------- Arena ----------
+aplicarHora('dia'); G.fogOn = false; aplicarHora('dia');
+// materiales propios (los de nucleo.js los está cambiando otro agente; aquí basta color liso)
+const mSuelo = new THREE.MeshStandardMaterial({ color: 0x6d6a64, roughness: .95 }), mMuro = new THREE.MeshStandardMaterial({ color: 0x8a867e, roughness: .9 }), mCaja = new THREE.MeshStandardMaterial({ color: 0x4a5536, roughness: .8 });
+flat(0, 0, 60, 60, mSuelo, .001, 0, 4);
+block(0, -12, 24, .6, 2.2, mMuro); block(-12, 0, .6, 24, 2.2, mMuro); block(12, 0, .6, 24, 2.2, mMuro);
+block(-4, -6, 1.2, 1.2, 1.2, mCaja); block(5, -4, 1, 1, 1, mCaja); block(5.2, -4, .8, .8, .8, mCaja, { y: 1 });
+block(-6, 4, 3, 1, .5, mMuro);
+// pared cercana detrás de los enemigos (para ver las salpicaduras direccionales)
+block(-1, -6.2, 9, .3, 2.6, new THREE.MeshStandardMaterial({ color: 0xb9b4a8, roughness: .85 }));
+// las salpicaduras buscan pared/suelo entre las mallas estáticas de la arena (aquí no se llama a hornear())
+const arena = []; capas.tierra.traverse(o => { if (o.isMesh && o.userData.static) arena.push(o); }); fijarSuperficies(() => arena);
+car.g.visible = false; car.g.position.set(150, 0, 90); vm.visible = false;
+sun.target.position.set(0, 0, 0); sun.position.copy(sunDir).multiplyScalar(70);
+P.inmune = true; G.playing = true; G.pausaEnemigos = true;
+dolly.position.set(0, 0, 7); let yaw = 0, pitch = -.18;
+
+// ---------- Enemigos ----------
+import { precargarActor } from '../js/combate/actor.js';
+// dos Dave realistas (.glb con esqueleto): uno patrulla y oye, el otro va a por ti
+const conDave = !/sinDave/.test(location.search);
+function poblar() {
+  limpiarEnemigos();
+  spawn('r7', -3, -2); spawn('r7', 0, -3.5, { arma: true }); spawn('r7', 3, -2);
+  spawn('villano', -1.6, 0.5); spawn('villano', 1.6, 0.5, { humano: { camisa: 0x5a1e1e, chaleco: 0x1a1a1a, barba: false, melena: true }, arma: true });
+  if (conDave) { spawn('villano', -5, -2.5, { modelo: 'Dave_animado', ruta: [[-5, -2.5], [-5, 3], [-8, 3]], hp: 140 }); spawn('villano', 6.5, 1.5, { modelo: 'Dave_animado', hp: 140, arma: true }); }
+  for (const e of enemies) e.boot = 1;
+}
+if (conDave) await precargarActor('Dave_animado', '../assets/personajes/Dave_animado.glb');
+poblar();
+
+// ---------- Armas de prueba ----------
+const ARMAS = {
+  rifle: { n: 'Rifle', dmg: 17, tipo: 'bala', melee: false },
+  escopeta: { n: 'Escopeta', dmg: 11, tipo: 'escopeta', melee: false, perdigones: 8, disp: .045 },
+  puno: { n: 'Puño', dmg: 16, tipo: 'contundente', melee: true },
+  piedra: { n: 'Piedra', dmg: 32, tipo: 'contundente', melee: true },
+  cuchillo: { n: 'Cuchillo', dmg: 28, tipo: 'corte', melee: true }
+};
+let arma = 'rifle';
+const cont = document.getElementById('armas');
+for (const k in ARMAS) { const b = document.createElement('button'); b.textContent = ARMAS[k].n; b.dataset.k = k; b.onclick = () => { arma = k; pintar(); }; cont.appendChild(b); }
+function pintar() { for (const b of cont.children) b.classList.toggle('on', b.dataset.k === arma); }
+pintar();
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), info = document.getElementById('info'), mira = document.getElementById('mira');
+let ultimo = '—';
+function disparar(cx, cy) {
+  audio();
+  const A = ARMAS[arma]; ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  camera.updateMatrixWorld(); ray.setFromCamera(ndc, camera);
+  const base = ray.ray.direction.clone(), o = ray.ray.origin.clone(), n = A.perdigones || 1;
+  const obj = enemyMeshes().concat(corpseMeshes(), sold ? sold.mallas : []);
+  if (sold) for (const m of sold.mallas) m.computeBoundingSphere(); // el soldado anima: la esfera de la pose de reposo no sirve
+  for (let i = 0; i < n; i++) {
+    const d = base.clone(); if (A.disp) { d.x += (Math.random() - .5) * A.disp; d.y += (Math.random() - .5) * A.disp; d.z += (Math.random() - .5) * A.disp; d.normalize(); }
+    ray.set(o, d); ray.far = A.melee ? 60 : 120; // en la prueba el golpe llega lejos para poder elegir la zona con el ratón
+    const h = ray.intersectObjects(obj, false)[0];
+    if (!A.melee) tracer(o.clone().add(new V3(0, -.15, 0)), h ? h.point : o.clone().addScaledVector(d, 60));
+    const swing = A.tipo === 'corte' ? new V3().crossVectors(d, new V3(0, 1, 0)).normalize().multiplyScalar(Math.random() < .5 ? 1 : -1).add(new V3(0, -.35, 0)).normalize() : null;
+    if (h && h.object.isSkinnedMesh) { const r = golpearSkinned(sold.est, h, d, { tipo: A.tipo, dmg: A.dmg, swing }); ultimo = `soldado ${r?.zona} (${r?.piel ? 'piel' : 'tela'}) · ${A.n}`; if (sold.est.hp <= 0 && !sold.muerto) { sold.muerto = true; sold.mixer.stopAllAction(); crearRagdoll(sold.raiz, { dir: d, fuerza: 4, zona: r?.zona, punto: h.point }); } }
+    else if (h && (h.object.userData.enemy || h.object.userData.cadaver)) { ultimo = `${h.object.userData.zona} · ${A.n} · ${A.dmg}`; applyHit(h.object, h.point, d, A.dmg, A.melee, A.tipo, { swing }); }
+  }
+  sfx(A.melee ? (arma === 'cuchillo' ? 'slash' : 'punch') : 'rifle');
+}
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+let drag = null;
+renderer.domElement.addEventListener('mousedown', e => { if (e.button === 2) drag = { x: e.clientX, y: e.clientY }; else if (e.button === 0) disparar(e.clientX, e.clientY); });
+addEventListener('mouseup', () => { drag = null; });
+addEventListener('mousemove', e => { mira.style.left = e.clientX + 'px'; mira.style.top = e.clientY + 'px'; if (drag) { yaw -= (e.clientX - drag.x) * .004; pitch = Math.max(-1.3, Math.min(1.3, pitch - (e.clientY - drag.y) * .004)); drag = { x: e.clientX, y: e.clientY }; } });
+const keys = {}; addEventListener('keydown', e => keys[e.code] = true); addEventListener('keyup', e => keys[e.code] = false);
+
+// ---------- Botones ----------
+const $ = s => document.getElementById(s);
+$('bQuietos').onclick = () => { G.pausaEnemigos = !G.pausaEnemigos; $('bQuietos').classList.toggle('on', G.pausaEnemigos); };
+$('bReset').onclick = () => poblar();
+// mata a todos con ragdoll (empujón hacia atrás) — si ya están muertos, los vuelve a sacudir
+$('bRag').onclick = () => {
+  const d = new V3(0, 0, -1);
+  if (enemies.length) for (const e of [...enemies]) { e.hp = 1; const p = e.pos.clone(); p.y += 1.2; damageEnemy(e, 5, p, d, 'torso', false, null, { zona: 'torso', tipo: 'bala' }); }
+  else for (const c of cadaveres) golpearCadaver(c, { dmg: 25, punto: c.R.root.position.clone().add(new V3(0, .5, 0)), dir: d, zona: 'torso', tipo: 'contundente' });
+};
+// apila: levanta todos los cadáveres sobre el centro y los suelta
+$('bMonton').onclick = () => {
+  if (enemies.length) $('bRag').onclick();
+  setTimeout(() => cadaveres.forEach((c, i) => { const p = c.R.root.position; const t = new V3(0, 0, -1.5).sub(p).setY(0); const dir = t.clone().normalize().setY(1.2).normalize(); golpearCadaver(c, { dmg: 10 + t.length() * 7, punto: p.clone().add(new V3(0, .9, 0)), dir, zona: 'pelvis', tipo: 'contundente' }); }), 400);
+};
+
+$('bEdad').onclick = () => { G.time += 60; };
+// ---------- Soldado .glb (mixamorig, con UV): heridas pintadas en su textura de daño ----------
+let sold = null;
+async function cargarSoldado() {
+  if (sold) return;
+  const g = await new GLTFLoader().loadAsync('../assets_src/threejs/Soldier.glb');
+  const raiz = g.scene; raiz.position.set(-3.6, 0, -4.2); raiz.rotation.y = Math.PI * .1; scene.add(raiz);
+  raiz.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  const mixer = new THREE.AnimationMixer(raiz); mixer.clipAction(g.animations.find(a => a.name === 'Idle')).play();
+  const est = prepararPiel(raiz, { piel: ['head', 'neck', 'handL', 'handR'], hp: 140 });
+  const mallas = []; raiz.traverse(o => { if (o.isSkinnedMesh) mallas.push(o); });
+  sold = { raiz, mixer, est, mallas, muerto: false }; window.__c.sold = sold;
+}
+$('bSold').onclick = () => cargarSoldado();
+cargarSoldado();
+// ---------- Bucle ----------
+const clock = new THREE.Clock(); let infoT = 0, fps = 0, nf = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(.05, clock.getDelta()); G.time += dt; nf++;
+  const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  dolly.position.x += (-Math.sin(yaw) * f + Math.cos(yaw) * s) * dt * 4; dolly.position.z += (-Math.cos(yaw) * f - Math.sin(yaw) * s) * dt * 4;
+  dolly.rotation.y = yaw; head.rotation.x = pitch;
+  camera.getWorldPosition(G.CAM);
+  if (sold && !sold.muerto) sold.mixer.update(dt);
+  actualizarEnemigos(dt);
+  actualizarFx(dt);
+  renderer.render(scene, camera);
+  infoT -= dt; if (infoT <= 0) { fps = Math.round(nf / (1 - infoT)); nf = 0; infoT = 1;
+    const r = estadoRagdolls();
+    info.textContent = `física: ${FIS.listo ? 'Rapier OK' : FIS.fallo ? 'FALLÓ (física falsa)' : 'cargando…'} · ${fps} fps · draw calls ${renderer.info.render.calls}\nragdolls activos ${r.activos} (${r.cuerpos} cuerpos) · cadáveres ${cadaveres.length} · piezas ${piezas.length} · atlas ${estadoAtlas.listas}/63 (${estadoAtlas.ms} ms) · heridas ${nMarcas()}\núltimo golpe: ${ultimo}\n` +
+      enemies.map(e => `${e.humano ? 'humano' : 'R-7'} hp ${Math.max(0, Math.round(e.hp))}${e.aturdido > 0 ? ' ATURDIDO' : ''}${e.arrastre ? ' ARRASTRA' : ''}${e.cojera > .05 ? ' cojea ' + e.cojera.toFixed(2) : ''}${Object.keys(e.roto || {}).length ? ' roto:' + Object.keys(e.roto).join(',') : ''}${Object.keys(e.R.lost).length ? ' sin:' + Object.keys(e.R.lost).join(',') : ''}`).join('\n');
+  }
+});
+listo.then(ok => { info.textContent = ok ? 'Rapier listo' : 'Rapier no cargó'; });
+// depuración desde la consola
+// ayudas para escenas de prueba desde la consola (apuntar a un punto del mundo, colocar la cámara)
+window.__h = {
+  W: ms => new Promise(r => setTimeout(r, ms)),
+  tiro(p, a = 'rifle') { arma = a; pintar(); camera.updateMatrixWorld(); const v = p.clone().project(camera); disparar((v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight); },
+  parte(e, zona) { for (const g of e.R.hit) if (!g.geometry.boundingBox) g.geometry.computeBoundingBox(); return e.R.hit.filter(m => m.userData.zona === zona).sort((x, y) => y.geometry.boundingBox.getSize(new V3()).lengthSq() - x.geometry.boundingBox.getSize(new V3()).lengthSq())[0]; },
+  desde(c, y, dist = 3, p = -.05) { yaw = y; pitch = p; dolly.position.set(c.x + Math.sin(y) * dist, 0, c.z + Math.cos(y) * dist); },
+  cerca(c, y, dist, p = -.06) { yaw = y; pitch = p; dolly.position.set(c.x + Math.sin(y) * dist, c.y - 1.62 + Math.sin(-p) * dist, c.z + Math.cos(y) * dist); }
+};
+// escena de prueba completa (para capturas): tiros en tela, tajo en piel, moratones de 3 edades, robot, soldado .glb
+window.__escena = async () => {
+  const { W, tiro, parte, desde } = __h, E = enemies, [r0, r1, r2, h, h2] = E;
+  for (const e of E) e.hp = 999;
+  h.pos.set(-1.2, 0, -4.6); h.R.root.rotation.y = 0; h2.pos.set(1.6, 0, -4.6); h2.R.root.rotation.y = 0;
+  r0.pos.set(4.2, 0, -4.4); r0.R.root.rotation.y = 0; r1.pos.set(5.6, 0, -1.2); r2.pos.set(3.0, 0, -.4);
+  await W(200);
+  const c = parte(h, 'torso').getWorldPosition(new V3());
+  desde(c, .35); await W(250); tiro(c.clone().add(new V3(-.06, .08, 0))); await W(200); tiro(c.clone().add(new V3(.08, -.03, 0))); await W(200);
+  desde(c, -.5); await W(250); tiro(c.clone().add(new V3(-.1, -.1, 0))); await W(200);
+  desde(c, 1.3); await W(250); tiro(c.clone().add(new V3(.15, .05, .06))); await W(200);
+  const fh = h.R.hit.find(m => m.userData.zona === 'head' && m.material === h.R._matPiel && m.geometry.boundingBox?.getSize(new V3()).y > .2) || parte(h, 'head');
+  const pf = fh.getWorldPosition(new V3()); desde(pf, 0, 2.2, 0); await W(250); tiro(pf.clone().add(new V3(.045, .05, 0)), 'cuchillo'); await W(200);
+  const rc = parte(r0, 'torso').getWorldPosition(new V3()); desde(rc, 0, 3, 0); await W(250);
+  for (const [x, y, a] of [[-.12, .05, 'rifle'], [.1, -.08, 'rifle'], [.02, .15, 'rifle'], [-.05, -.1, 'piedra'], [.12, .12, 'cuchillo']]) { tiro(rc.clone().add(new V3(x, y, 0)), a); await W(150); }
+  if (sold) { const sc = sold.raiz.position.clone().add(new V3(0, 1.25, 0)); desde(sc, .3, 3, 0); await W(300); for (const [x, y, a] of [[.05, .1, 'rifle'], [-.08, -.05, 'rifle'], [.12, -.25, 'rifle'], [0, .45, 'cuchillo'], [-.04, .5, 'puno']]) { tiro(sc.clone().add(new V3(x, y, 0)), a); await W(200); } }
+  for (const e of E) e.aturdido = 0;
+};
+window.__c = { enemies, cadaveres, FIS, damageEnemy, applyHit, poblar, G, V3, camera, dolly, setVista: (y, p, x, z) => { yaw = y; pitch = p; if (x !== undefined) dolly.position.set(x, 0, z); }, setArma: k => { arma = k; pintar(); }, disparar };
+</script>
+</body>
+</html>
