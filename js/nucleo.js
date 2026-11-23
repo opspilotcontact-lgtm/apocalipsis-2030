@@ -239,7 +239,7 @@ export const M = {
   cerro: pbr('aerial_grass_rock', { rep: 1, color: 0x9a9a8a, sinArm: true, roughness: .95 }),
   lab: pbr('corrugated_iron_02', { rep: 1.5, color: 0xb4bcc4, macro: .25 }),
   labIn: std({ map: texPanelIn, normalMap: tex('painted_plaster_wall_nor_gl', false, 1), normalScale: new THREE.Vector2(.35, .35), roughness: .62, metalness: .05 }),
-  tiles: pbr('floor_tiles_06', { rep: 1, color: 0xdfe4e8, macro: .15 }),
+  tiles: pbr('floor_tiles_06', { rep: 1, color: 0xdfe4e8, macro: .15, roughness: .38 }), // pulido: refleja las lámparas de la sala
   tilesGastado: pbr('worn_tile_floor', { rep: 1, macro: .2 }),
   crate: std({ map: texCrate, normalMap: tex('rough_wood_nor_gl', false, 1), roughness: .75, metalness: .15 }),
   dark: std({ color: 0x15171b, roughness: .55, metalness: .6, roughnessMap: texScratch }),

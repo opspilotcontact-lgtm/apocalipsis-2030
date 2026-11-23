@@ -78,6 +78,7 @@ Herramientas instaladas en el PC: Blender 5.3, KTX-Software 4.4.2 (toktx), 7-Zip
 ## 5. Estado y deuda conocida (actualizar)
 
 - **Probado por el usuario en VR (23-nov)**: «no va mal, falta pulir mucho»; lo mejor: la carretera mojada de noche con farola («calidad triple A»). El usuario traerá una lista de pulido.
+- **Bloque 1 parte rápida HECHA (23-nov)**: `js/mundo/iluminacion.js` (oclusión de rincones, foco con sombra por sala, sonda de reflejo propia, ambiente bajo dentro). Siguiente: parte 2, lightmaps horneados en Blender.
 - **Pendiente A2.2**: John, Lena, R-7 real y escopeta Arda con TRELLIS.2 (cupo gratis ≈ 2 generaciones/día con su token HF), luego integrarlos.
 - **Sin probar en VR**: fundas/recarga física, agarre a dos manos, cabina, gesto de ecos, botones de cámaras con el dedo, dardos, cables de la valla, orientación de herramientas en la mano, «pop-in» del recorte por niebla al girar rápido.
 - **Deuda**: luz plana en interiores y de día (ver Bloque 1), personajes por código de ~25 piezas (enemigos), sombras caras en lab/prólogo, cap. 3 justo en 247 llamadas, la taquilla del cap. 3 por vía alternativa no mete al jugador dentro, agarre a dos manos del casco no forzado en VR, reacciones de PNJ a minijuegos solo subtítulos, la valla de la base solo es ruta real a pie.

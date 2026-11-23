@@ -2,6 +2,7 @@
 import { conectarPerf } from './perf.js'; // primero: con ?stats engancha WebGL antes de la primera textura
 import { THREE, V3, G, $, renderer, scene, capas, camera, dolly, head, vm, sky, sun, sunDir, aplicarHora, hornear, actualizarLuces, labels, rnd, lejania } from './nucleo.js';
 import { actualizarFx, audio, dust, ambiente } from './fx.js';
+import './mundo/iluminacion.js'; // salas: oclusión de esquinas, luz con sombra y reflejos propios (antes de compilar materiales)
 import { modelo } from './cuerpos.js';
 import { construirTierra } from './mundo/tierra.js';
 import { construirEspacio, actualizarEspacio } from './mundo/espacio.js';

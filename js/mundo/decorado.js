@@ -168,7 +168,7 @@ export function casaDave() {
     // lámparas de techo: plafón en el salón, colgante sobre la mesa
     ci(raiz, .22, .06, M.pintado, 17.2, H - .05, 84.5, { c: 0xf0f0ea }); ci(raiz, .19, .02, M.lampara, 17.2, H - .085, 84.5, { shoot: false });
     ci(raiz, .006, .9, M.metalV, 22.6, H - .45, 82.7, { c: 0x222222 }); ci(raiz, .06, .28, M.metalV, 22.6, H - 1.0, 82.7, { r2: .26, abierto: true, c: 0x2a4a3a, seg: 16 }); es(raiz, .06, M.lampara, 22.6, H - 1.1, 82.7, { shoot: false });
-    fuenteLuz(22.6, 2.0, 82.7, 0xffcf90, 30, 9, 'fijo', true); fuenteLuz(15.2, 1.5, 88.6, 0xffb870, 14, 6, 'fijo', true); fuenteLuz(23.2, 1.45, 88.6, 0xfff0d8, 12, 5, 'fijo', true);
+    fuenteLuz(22.6, 2.0, 82.7, 0xffcf90, 30, 9, 'fijo', true); fuenteLuz(15.2, 1.5, 88.6, 0xffb870, 8, 5, 'fijo', true); fuenteLuz(23.2, 1.45, 88.6, 0xfff0d8, 6, 4, 'fijo', true); // lámparas con pantalla: charco de luz corto
 
     // --- Cocina en L: encimera sur (x 20.9..25.85) y este (z 85.35..88.75), nevera en la esquina este ---
     const fr = 0x8fa58c, enc = (x, z, w, d) => { bx(raiz, w, .04, d, M.madMesa, x, .9, z, { s: .8 }); supf(x, .92, z, w - .05, d - .05); };

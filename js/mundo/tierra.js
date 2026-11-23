@@ -172,17 +172,18 @@ function casas() {
   block(20, (Z0 + Z1) / 2, X1 - X0 + .3, Z1 - Z0 + .3, 2.8, M.casa, { y: H, collide: false, s: 6 }); tejado(20, (Z0 + Z1) / 2, X1 - X0, Z1 - Z0, H + 2.8);
   flat(20, (Z0 + Z1) / 2, X1 - X0 - .3, Z1 - Z0 - .3, M.suelo, .03, 0, 2);
   { const t = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0 - .3, Z1 - Z0 - .3), M.techo); { const uv = t.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 11.7 / 2, uv.getY(i) * 9.7 / 2); } t.rotation.x = Math.PI / 2; pieza(t, 20, H - .02, (Z0 + Z1) / 2, { shoot: false, cast: false }); } // techo
-  for (const [x, z, w, d, ry] of [[16.5, Z0 + .17, 5, H, 0], [23.5, Z0 + .17, 5, H, 0], [20, Z1 - .17, X1 - X0, H, Math.PI], [X0 + .17, (Z0 + Z1) / 2, Z1 - Z0, H, Math.PI / 2], [X1 - .17, (Z0 + Z1) / 2, Z1 - Z0, H, -Math.PI / 2]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), M.pared); m.rotation.y = ry; pieza(m, x, d / 2, z, { shoot: false }); }
+  for (const [x, z, w, d, ry] of [[16.5, Z0 + .17, 5, H, 0], [23.5, Z0 + .17, 5, H, 0], [20, Z1 - .17, X1 - X0, H, Math.PI], [X0 + .17, (Z0 + Z1) / 2, Z1 - Z0, H, Math.PI / 2], [X1 - .17, (Z0 + Z1) / 2, Z1 - Z0, H, -Math.PI / 2]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), M.pared); uvMetros(m.geometry, w, d, .9); m.rotation.y = ry; pieza(m, x, d / 2, z, { shoot: false }); }
   // muebles: sofá, mesa, tele, cocina
   W.tele = canvasPlane(1.6, .9, 512, (x, w, h, a) => { x.fillStyle = a.bg || '#0a0d12'; x.fillRect(0, 0, w, h); if (!a.t) return; x.fillStyle = '#c81818'; x.fillRect(0, h * .68, w, h * .16); x.fillStyle = '#fff'; x.font = '700 34px "Chakra Petch",sans-serif'; x.fillText('ÚLTIMA HORA', 16, h * .79); x.font = '600 24px Inter,sans-serif'; x.fillText(a.t, 16, h * .94); x.fillStyle = '#8aa'; x.fillRect(w * .3, h * .1, w * .4, h * .5); x.fillStyle = '#ff3b1f'; x.beginPath(); x.arc(w * .5, h * .3, 18, 0, 7); x.fill(); });
   W.tele.mesh.rotation.y = Math.PI; pieza(W.tele.mesh, 17.5, 1.25, 80.12, { static: false, cast: false }); W.tele.set({});
-  fuenteLuz(20, 2.8, 84.5, 0xffd9a0, 55, 12, 'fijo', true);
+  // (la luz general sin lámpara que aplanaba la casa la sustituye el plafón con sombra de iluminacion.js)
   // jardín: valla baja de madera y camino
   for (const [x0, x1] of [[14, 19], [21, 26]]) block((x0 + x1) / 2, 75.6, x1 - x0, .12, .7, M.wood, { s: 1 });
   block(14, 77.5, .12, 3.8, .7, M.wood, { s: 1 }); block(26, 77.5, .12, 3.8, .7, M.wood, { s: 1, collide: false });
   flat(20, 77.5, 1.6, 4, M.concrete, .02, 0, 1.5); flat(11, 77, 4, 4.5, M.concrete, .02, 0, 2);
   farola(8.6, 66, 0); farola(30, 75.4, Math.PI); arbol(28, 92); arbol(10, 92, 1.2);
 }
+function uvMetros(g, w, d, s) { const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / s, uv.getY(i) * d / s); }
 function tejado(x, z, w, d, y) {
   const g = new THREE.ConeGeometry(Math.hypot(w, d) / 2 * 1.02, 2.4, 4, 1); g.rotateY(Math.PI / 4); const m = new THREE.Mesh(g, M.tejado); m.scale.set(w / Math.hypot(w, d) * 1.45, 1, d / Math.hypot(w, d) * 1.45); pieza(m, x, y + 1.2, z, { shoot: false });
 }
@@ -195,7 +196,7 @@ function tienda() {
   block(-15.5, -50, X1 - X0 + .4, Z1 - Z0 + .4, 3, M.bld2, { y: H, collide: false, s: 12 }); block(-15.5, -50, X1 - X0 + .8, Z1 - Z0 + .8, .4, M.concrete, { y: H + 3, collide: false });
   flat(-15.5, -50, X1 - X0 - .3, Z1 - Z0 - .3, M.tilesGastado, .03, 0, 2.5);
   { const t = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0 - .3, Z1 - Z0 - .3), M.techo); t.rotation.x = Math.PI / 2; pieza(t, -15.5, H - .02, -50, { shoot: false, cast: false }); } // techo
-  for (const [x, z, w, d, ry] of [[-15.5, Z0 + .17, 13, H, 0], [-15.5, Z1 - .17, 13, H, Math.PI], [X0 + .17, -50, 14, H, Math.PI / 2]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), M.pared); m.rotation.y = ry; pieza(m, x, d / 2, z, { shoot: false }); }
+  for (const [x, z, w, d, ry] of [[-15.5, Z0 + .17, 13, H, 0], [-15.5, Z1 - .17, 13, H, Math.PI], [X0 + .17, -50, 14, H, Math.PI / 2]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), M.pared); uvMetros(m.geometry, w, d, .9); m.rotation.y = ry; pieza(m, x, d / 2, z, { shoot: false }); }
   letrero('ARMAS · HANK', 5, .9, -8.8, 3.4, -50, Math.PI / 2);
   // mostrador y estanterías
   fuenteLuz(-15.5, 3.6, -50, 0xfff0d0, 14, 11, 'parpadeo', true);
@@ -243,7 +244,7 @@ function laboratorio() {
   }
   for (let i = 0; i < 3; i++) for (const sx of [-5.5, 5.5]) { const p = new THREE.Mesh(new THREE.PlaneGeometry(2.4, .5), M.white); p.rotation.x = Math.PI / 2; pieza(p, sx, 6.21, -22 - i * 5, { shoot: false, cast: false }); }
   flat(-7, -27, 7, 12, M.hazard, .025, 0, 3);
-  fuenteLuz(-5.5, 5.4, -27, 0xdfefff, 33, 17, 'fijo', true); fuenteLuz(5.5, 5.4, -27, 0xdfefff, 33, 17, 'fijo', true);
+  fuenteLuz(-5.5, 5.4, -27, 0xdfefff, 16, 13, 'fijo', true); fuenteLuz(5.5, 5.4, -27, 0xdfefff, 16, 13, 'fijo', true);
   // pasillo trasero (taquilla y puerta acristalada): fluorescente que parpadea + piloto rojo de emergencia sobre la puerta
   fuenteLuz(-9.6, 3.1, -31.6, 0xfff0d8, 8, 8, 'parpadeo', true); fuenteLuz(-8.5, 2.9, -35.2, 0xff3020, 3.5, 5, 'fijo', true);
   // planos en las paredes
