@@ -21,7 +21,7 @@ const inter = (label, mallas, extra) => registrar({ label, mallas, activo: () =>
 export const cabina = { radio: new Radio(), limpia: false, limpiaT: 0, guantera: null, llave: null, espejo: null };
 
 export function construirCoche() {
-  const g = car.g;
+  const g = car.g, previos = new Set(g.children);
   // ---------- cuadro ----------
   if (car.speedo) car.speedo.mesh.visible = false;
   const cuadro = canvasPlane(.36, .12, 512, (x, w, h, a) => {
@@ -113,6 +113,13 @@ export function construirCoche() {
     agarre: { dist: q => tirEx.getWorldPosition(tA).distanceTo(q) - .05, agarrar: () => { if (!car.occupied && car.near && !car.bloqueado) enterCar(); return false; } } });
 
   // ---------- cuerpo cinemático de la pickup (empuja objetos; lo que va en la caja viaja con ella) ----------
+  // interior (cuadro, radio, guantera, parasoles, retrovisor, llave...) en su grupo: se oculta entero a > 9 m de la
+  // pickup (tras el cristal tintado no se ve y eran ~30 llamadas); los limpiaparabrisas se quedan fuera (se ven)
+  cabina.interior = new THREE.Group(); cabina.interior.name = 'interiorPickup';
+  const fuera = new Set(cabina.brazos.map(b => b.parent === g ? b : b.parent));
+  for (const o of [...g.children]) if (!previos.has(o) && !fuera.has(o)) cabina.interior.add(o);
+  g.add(cabina.interior);
+
   alListo(() => { cabina.body = cuerpoCinematico([{ f: 'caja', m: [1, .25, 2.3], c: [0, .66, 0] }, { f: 'caja', m: [.95, .03, .6], c: [0, .93, 1.72] }, { f: 'caja', m: [.035, .18, .6], c: [.95, 1.08, 1.72] }, { f: 'caja', m: [.035, .18, .6], c: [-.95, 1.08, 1.72] }, { f: 'caja', m: [.98, .18, .035], c: [0, 1.08, 2.3] }, { f: 'caja', m: [.93, .04, 1.05], c: [0, 1.74, .15] }, { f: 'caja', m: [.95, .1, .75], c: [0, .96, -1.5] }], new V3(0, -60, 0)); });
 }
 export function arrancar() { if (car.motor) return; car.motor = true; engineSet(true); sfx('motor'); emitirRuido(car.g.position, 'motor'); say('Motor en marcha'); }
@@ -124,6 +131,7 @@ export function actualizarCoche(dt, dedos) {
   // física: la pickup como cuerpo cinemático
   if (c.body) { if (car.g.visible) { car.g.updateMatrixWorld(true); car.g.getWorldPosition(tA); car.g.getWorldQuaternion(tQ); moverCinematico(c.body, tA, tQ); } else moverCinematico(c.body, tB.set(0, -60, 0)); }
   if (!car.g.visible) return;
+  if (c.interior) c.interior.visible = car.occupied || G.CAM.distanceToSquared(car.g.position) < 81;
   const cerca = car.occupied || car.near;
   // cuadro a 10 Hz
   c.t = (c.t || 0) - dt; if (cerca && c.t <= 0) { c.t = .1; c.cuadro.set({ v: Math.abs(car.speed) * 3.6, rpm: car.motor ? .8 + Math.abs(car.speed) * .22 + (car.thr || 0) * 1.5 : 0, fuel: .62, motor: !!car.motor }); }

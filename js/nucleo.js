@@ -436,6 +436,55 @@ export function hornear() {
   }
 }
 
+// Fusiona por material las mallas HIJAS DIRECTAS de un grupo que se mueve entero (p. ej. la carrocería de la pickup):
+// una llamada por material en vez de una por pieza. Solo mallas sin hijos y que nadie más referencia.
+export function fundirHijos(par, excluir = new Set()) {
+  const grupos = new Map();
+  for (const m of [...par.children]) {
+    if (!m.isMesh || m.isSkinnedMesh || m.isInstancedMesh || m.children.length || excluir.has(m) || Array.isArray(m.material)) continue;
+    const k = m.material.uuid + '|' + m.castShadow; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(m);
+  }
+  for (const arr of grupos.values()) {
+    if (arr.length < 2) continue;
+    const geos = arr.map(m => { m.updateMatrix(); const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); for (const a of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(a)) g.deleteAttribute(a); if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); return g.applyMatrix4(m.matrix); });
+    const merged = BGU.mergeGeometries(geos, false); geos.forEach(g => g.dispose()); if (!merged) continue;
+    const mm = new THREE.Mesh(merged, arr[0].material); mm.castShadow = arr[0].castShadow; mm.receiveShadow = arr[0].receiveShadow; par.add(mm);
+    for (const m of arr) m.removeFromParent();
+  }
+}
+
+// ---------- Recorte por niebla y por tamaño (menos llamadas sin perder nada visible) ----------
+// 1) Niebla: la niebla lineal deja en color de niebla todo lo que está a más de fog.far de PROFUNDIDAD de vista; a ras
+//    de suelo (niebla de altura ≈ 1) eso es invisible, pero three lo seguía dibujando (cámara far 330): de noche (far 62)
+//    los trastos físicos, camiones y robots de la base/lab a 80-200 m costaban ~250 llamadas. Se descarta lo que está
+//    entero más allá de fog.far + margen y cuya caja no pasa de lejania.alto (lo alto asoma sobre la niebla de altura).
+//    Respeta material.fog === false (luna, shaders del cielo).
+// 2) Detalle: la pieza suelta (no estática) que ocupa menos de ~2-3 px (radio < detalle × distancia) no se dibuja
+//    (botones, tornillos y trastos pequeños del interior de la pickup, cajones lejanos...).
+// Solo durante el render principal (main.js activa lejania.on; también vale para su sombra) y nunca con
+// userData.sinLejania. Las cámaras del lab y demás render a textura no se ven afectadas.
+export const lejania = { on: false, c: new V3(), f: new V3(0, 0, -1), margen: 5, alto: 3.5, detalle: .0025 };
+{
+  const _s = new THREE.Sphere(), _b = new THREE.Box3(), base = THREE.Frustum.prototype.intersectsObject;
+  const conNiebla = m => (Array.isArray(m) ? m.every(x => x.fog !== false) : m && m.fog !== false);
+  THREE.Frustum.prototype.intersectsObject = function (o) {
+    if (!lejania.on || o.userData.sinLejania) return base.call(this, o);
+    const g = o.geometry;
+    if (o.boundingSphere !== undefined) { if (o.boundingSphere === null) o.computeBoundingSphere(); _s.copy(o.boundingSphere); }
+    else { if (!g) return base.call(this, o); if (g.boundingSphere === null) g.computeBoundingSphere(); _s.copy(g.boundingSphere); }
+    _s.applyMatrix4(o.matrixWorld);
+    const C = lejania.c, dx = _s.center.x - C.x, dy = _s.center.y - C.y, dz = _s.center.z - C.z;
+    if (!o.userData.static && _s.radius * _s.radius < lejania.detalle * lejania.detalle * (dx * dx + dy * dy + dz * dz)) return false;
+    const F = scene.fog;
+    if (F && F.far < 500 && dx * lejania.f.x + dy * lejania.f.y + dz * lejania.f.z - _s.radius > F.far + lejania.margen && conNiebla(o.material)) {
+      let top = _s.center.y + _s.radius;
+      if (top >= lejania.alto && o.boundingSphere === undefined && g) { if (g.boundingBox === null) g.computeBoundingBox(); top = _b.copy(g.boundingBox).applyMatrix4(o.matrixWorld).max.y; }
+      if (top < lejania.alto) return false;
+    }
+    return this.intersectsSphere(_s);
+  };
+}
+
 // ---------- Cielo y hora del día ----------
 // Domo procedural: degradado + sol/halo + halo de luna + Vía Láctea + resplandor de la ciudad/incendios en el
 // horizonte + capa de nubes (amanecer/atardecer y noches nubladas) + nebulosa (espacio). Todo en un shader,
@@ -517,7 +566,7 @@ sun.shadow.bias = -.0004; sun.shadow.normalBias = .03; scene.add(sun, sun.target
 export const sunDir = new V3();
 // hdri: entorno de reflejos/luz ambiente (Poly Haven 1K) · bg: usar el HDRI desenfocado como cielo (solo de día)
 export const TIMES = {
-  noche: { n: 'noche', top: 0x050a1c, bot: 0x161b2a, fog: 0x0d121d, fn: 5, ff: 62, sun: 0x7f9fff, si: .75, sp: [-14, 24, 10], ht: 0x2a3a6a, hg: 0x0a0a0e, hi: .42, exp: 1.38, lamp: 1, stars: 1, env: .62, win: 1.5, hdri: 'dikhololo_night', rotE: 0, wet: 1, sv: 0, mv: 1, milky: .9, nubes: .35, nubeC: 0x1a2030, ciudad: .22, incendio: 0 },
+  noche: { n: 'noche', top: 0x050a1c, bot: 0x161b2a, fog: 0x0d121d, fn: 5, ff: 62, sun: 0x7f9fff, si: .75, sp: [-14, 24, 10], ht: 0x2a3a6a, hg: 0x0a0a0e, hi: .44, exp: 1.44, lamp: 1, stars: 1, env: .62, win: 1.5, hdri: 'dikhololo_night', rotE: 0, wet: 1, sv: 0, mv: 1, milky: .9, nubes: .35, nubeC: 0x1a2030, ciudad: .22, incendio: 0 },
   atardecer: { n: 'atardecer', top: 0x2d3a6b, bot: 0xff8a4a, fog: 0x7a5a5a, fn: 14, ff: 110, sun: 0xffa060, si: 2.8, sp: [-30, 7, -14], ht: 0x8a78a8, hg: 0x3a2618, hi: .45, exp: .95, lamp: .6, stars: 0, env: .7, win: .7, hdri: 'venice_sunset', rotE: 2.2, wet: .2, sv: 1, mv: 0, milky: 0, nubes: .55, nubeC: 0x6a5a78, ciudad: .05, incendio: 0 },
   amanecer: { n: 'amanecer', top: 0x3a4a7a, bot: 0xffb07a, fog: 0x8f7a74, fn: 14, ff: 110, sun: 0xffc090, si: 2.4, sp: [32, 8, 18], ht: 0x9a90b8, hg: 0x3a2a20, hi: .45, exp: .95, lamp: .45, stars: 0, env: .65, win: .6, hdri: 'kiara_1_dawn', rotE: -.6, wet: .45, sv: 1, mv: 0, milky: 0, nubes: .5, nubeC: 0x8a7a90, ciudad: 0, incendio: 0 },
   dia: { n: 'día', top: 0x5d9be0, bot: 0xcfe2f2, fog: 0xb4c2cc, fn: 30, ff: 160, sun: 0xfff1dc, si: 3, sp: [12, 30, 8], ht: 0xc8dcff, hg: 0x6a5a48, hi: .6, exp: .9, lamp: .12, stars: 0, env: 1, win: .04, hdri: 'kloofendal_overcast_puresky', bg: .35, bgI: 1, rotE: 0, wet: 0, sv: .6, mv: 0, milky: 0, nubes: .4, nubeC: 0xe8ecf0, ciudad: 0, incendio: 0 },

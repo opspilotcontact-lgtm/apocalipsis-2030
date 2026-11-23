@@ -1,6 +1,6 @@
 // Arranque: construye el mundo, monta el menú y el bucle principal (PC y VR comparten todo).
 import { conectarPerf } from './perf.js'; // primero: con ?stats engancha WebGL antes de la primera textura
-import { THREE, V3, G, $, renderer, scene, capas, camera, dolly, head, vm, sky, sun, sunDir, aplicarHora, hornear, actualizarLuces, labels, rnd } from './nucleo.js';
+import { THREE, V3, G, $, renderer, scene, capas, camera, dolly, head, vm, sky, sun, sunDir, aplicarHora, hornear, actualizarLuces, labels, rnd, lejania } from './nucleo.js';
 import { actualizarFx, audio, dust, ambiente } from './fx.js';
 import { modelo } from './cuerpos.js';
 import { construirTierra } from './mundo/tierra.js';
@@ -115,6 +115,8 @@ renderer.setAnimationLoop(() => {
   const w = WEAPONS[P.w];
   actualizarUI(dt, { hp: Math.max(0, Math.ceil(P.hp)), w: car.occupied ? 'Al volante' : P.sentado ? 'Sentado' : w.name, ammo: car.occupied ? Math.round(Math.abs(car.speed) * 3.6) + ' km/h' : w.melee ? '∞' : P.reloading > 0 ? 'Recargando…' : `${P.ammo[w.id]} · ${(P.cargadores?.[w.id] || []).length} carg.`, det: deteccion.activa || deteccion.v > 0 ? deteccion.v : 0, visto: deteccion.visto });
   actualizarJuego(dt); // sistemas de juego (js/juego): también hace el render a textura de las cámaras
-  renderer.render(scene, camera);
+  // recorte por niebla solo en el render principal (las cámaras del lab y demás render a textura no lo usan)
+  camera.getWorldPosition(lejania.c); camera.getWorldDirection(lejania.f); lejania.on = true;
+  renderer.render(scene, camera); lejania.on = false;
   tickPerf?.();
 });

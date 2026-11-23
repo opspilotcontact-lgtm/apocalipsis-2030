@@ -4,7 +4,7 @@
 // PC: E sobre la puerta/cajón lo abre o lo cierra con animación. Las partes móviles son cuerpos cinemáticos:
 // empujan los objetos (cerrar un cajón arrastra lo que hay dentro). Lo que hay dentro está «guardado» (sin
 // cuerpo) hasta que se coge, así no choca con el mueble ni con el bloque del mostrador donde va metido.
-import { THREE, V3, clamp } from '../nucleo.js';
+import { THREE, V3, clamp, fundirHijos } from '../nucleo.js';
 import { buzz } from '../fx.js';
 import { chirrido, portazo, deslizar } from './sonido.js';
 import { cuerpoFijo, cuerpoCinematico, moverCinematico, alListo } from './fisica-adaptador.js';
@@ -25,6 +25,7 @@ export function crearPuerta(o) {
   const panel = caja(W, H, T, o.mat || MM.madera, W / 2, H / 2, 0, piv);
   const ty = o.tiradorY ?? H * .45, tir = new THREE.Group(); tir.position.set(W - .07, ty, 0); piv.add(tir);
   for (const sz of [1, -1]) { const t = caja(.025, .14, .025, MM.tirador, 0, 0, sz * (T / 2 + .03), tir); caja(.02, .02, .03, MM.tirador, 0, .05, sz * (T / 2 + .015), tir); caja(.02, .02, .03, MM.tirador, 0, -.05, sz * (T / 2 + .015), tir); }
+  fundirHijos(tir); // tirador: 6 piezas → 1 llamada
   const p = { tipo: 'puerta', piv, panel, label: o.label || 'puerta', ang: o.ang || 0, vel: 0, obj: null, mano: null, max, s, body: null, mallas: [panel, ...tir.children], cambio: true,
     activo: () => true,
     centro: out => tir.getWorldPosition(out),
@@ -63,7 +64,7 @@ export function crearCajon(o) {
   const base = new THREE.Group(); base.position.set(o.x, o.y, o.z); base.rotation.y = o.ry || 0; (o.padre || raiz).add(base);
   const g = new THREE.Group(); base.add(g);
   const W = o.ancho, H = o.alto, D = o.fondo, max = o.max ?? D * .85, fm = o.frente || MM.madera, t = .012;
-  caja(W, t, D, MM.dentro, 0, -H / 2 + t / 2, 0, g); caja(t, H * .8, D, MM.dentro, -W / 2 + t / 2, -H * .1, 0, g); caja(t, H * .8, D, MM.dentro, W / 2 - t / 2, -H * .1, 0, g); caja(W, H * .8, t, MM.dentro, 0, -H * .1, -D / 2, g);
+  caja(W, t, D, MM.dentro, 0, -H / 2 + t / 2, 0, g); caja(t, H * .8, D, MM.dentro, -W / 2 + t / 2, -H * .1, 0, g); caja(t, H * .8, D, MM.dentro, W / 2 - t / 2, -H * .1, 0, g); caja(W, H * .8, t, MM.dentro, 0, -H * .1, -D / 2, g); fundirHijos(g); // caja interior: 4 piezas → 1 llamada
   const frente = caja(W + .02, H, .02, fm, 0, 0, D / 2 + .01, g);
   const tir = caja(W * .35, .02, .025, MM.tirador, 0, H * .1, D / 2 + .035, g);
   const c = { tipo: 'cajon', g, label: o.label || 'cajón', e: 0, vel: 0, obj: null, mano: null, max, body: null, mallas: [frente, tir], cambio: true,
@@ -101,6 +102,7 @@ export function crearArmario(o) {
   const { w, h, d } = o, t = .025, m = o.mat || (o.tipo === 'nevera' ? MM.blanco : o.tipo === 'taquilla' ? MM.metal : MM.madera);
   const paneles = [[w, t, d, 0, t / 2, 0], [w, t, d, 0, h - t / 2, 0], [t, h, d, -w / 2 + t / 2, h / 2, 0], [t, h, d, w / 2 - t / 2, h / 2, 0], [w, h, t, 0, h / 2, -d / 2 + t / 2], ...(o.baldas || []).map(y => [w - 2 * t, .015, d - t, 0, y, t / 2])];
   paneles.forEach(([a, b, c2, x, y, z], i) => caja(a, b, c2, i === 4 || i > 4 ? (o.tipo === 'nevera' && i > 4 ? new THREE.MeshStandardMaterial({ color: 0xcfe8f0, transparent: true, opacity: .5, roughness: .1 }) : m) : m, x, y, z, g));
+  fundirHijos(g); // cuerpo y baldas: 1 llamada por material (antes de la puerta, la luz y lo que se meta dentro)
   let luz = null; if (o.tipo === 'nevera') { luz = caja(w * .5, .02, .06, MM.luzNevera.clone(), 0, h - .06, -d / 4, g); }
   // la puerta se abre hacia fuera: el panel va por +X local cerrado y gira hacia +Z (sentido -1 en Y)
   const puerta = crearPuerta({ x: -w / 2, y: 0, z: d / 2 + .02, ry: 0, ancho: w, alto: h, grosor: .04, max: o.max ?? 1.8, sentido: -1, mat: m, padre: g, label: o.label || (o.tipo === 'nevera' ? 'nevera' : 'armario'), tiradorY: o.tipo === 'nevera' ? h * .62 : h * .5 });

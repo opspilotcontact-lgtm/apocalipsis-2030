@@ -1,5 +1,5 @@
 // Vehículos: la pickup de Dave (se conduce) y los viajes guiados (camión militar, ORION-4).
-import { THREE, V3, Y, G, mix, clamp, std, glow, rbox, cylG, texScratch, scene, camera, dolly, canvasPlane, textDraw, collideCircle, groundAt, rampGround, lampFactor, capas } from './nucleo.js';
+import { THREE, V3, Y, G, mix, clamp, std, glow, rbox, cylG, texScratch, scene, camera, dolly, canvasPlane, textDraw, collideCircle, groundAt, rampGround, lampFactor, capas, fundirHijos } from './nucleo.js';
 import { sfx, engineSet, engineTune, burst, buzz } from './fx.js';
 import { P, ctrl, attachWeapon, say } from './jugador.js';
 import { enemies, damageEnemy, knockdown } from './enemigos.js';
@@ -36,7 +36,8 @@ const CM = { paint: std({ color: 0x6a2a1e, metalness: .55, roughness: .38, rough
     spn.add(new THREE.Mesh(new THREE.BoxGeometry(.36, .06, .06), CM.dark)); car.wheels.push({ st, spn, front: sz < 0 }); }
   car.seat = new THREE.Object3D(); car.seat.position.set(-.42, 0, .32); car.g.add(car.seat);
   car.pasajero = new THREE.Object3D(); car.pasajero.position.set(.42, .72, .32); car.g.add(car.pasajero);
-  car.light = new THREE.SpotLight(0xfff2d8, 0, 40, .55, .45, 1.5); car.light.position.set(0, .85, -2.4); car.light.target.position.set(0, 0, -16); car.g.add(car.light, car.light.target); }
+  car.light = new THREE.SpotLight(0xfff2d8, 0, 40, .55, .45, 1.5); car.light.position.set(0, .85, -2.4); car.light.target.position.set(0, 0, -16); car.g.add(car.light, car.light.target);
+  fundirHijos(car.g, new Set([car.speedo.mesh])); } // carrocería: ~30 piezas → 1 llamada por material
 export const carPrompt = canvasPlane(1.4, .3, 512, textDraw('#ffffff', .7, 'rgba(8,12,22,.85)')); scene.add(carPrompt.mesh); carPrompt.set('E / A · SUBIR'); carPrompt.mesh.visible = false;
 export const carFwd = o => o.set(-Math.sin(car.yaw), 0, -Math.cos(car.yaw));
 export function colocarCoche(x, z, yaw) { if (car.occupied) exitCar(true); car.g.position.set(x, 0, z); car.yaw = yaw; car.speed = 0; car.vy = 0; car.g.rotation.set(0, yaw, 0); car.g.visible = true; }
