@@ -17,11 +17,11 @@ const OFF = new URLSearchParams(location.search).get('salas') === '0';
 
 // Cajas INTERIORES (cara de dentro de las paredes) en coordenadas de mundo. luz = luz principal con sombra.
 export const SALAS = [
-  { id: 'casaDave', min: [14.15, 0, 79.65], max: [25.85, 3.18, 89.35], hemi: .25, env: .4,
+  { id: 'casaDave', min: [14.15, 0, 79.65], max: [25.85, 3.18, 89.35], hemi: .25, env: .22,
     luz: { p: [17.2, 3.08, 84.5], obj: [17.6, 0, 84.8], c: 0xffd3a0, i: 42, d: 11, ang: 1.25 } },
-  { id: 'lab', min: [-11.58, 0, -147.58], max: [11.58, 6.5, -130.42], hemi: .25, env: .45,
+  { id: 'lab', min: [-11.58, 0, -147.58], max: [11.58, 6.5, -130.42], hemi: .25, env: .26,
     luz: { p: [0, 6.1, -139.5], obj: [0, 0, -139], c: 0xe6f0ff, i: 110, d: 20, ang: 1.15 } },
-  { id: 'tienda', min: [-21.83, 0, -56.83], max: [-9.17, 4.18, -43.17], hemi: .25, env: .4,
+  { id: 'tienda', min: [-21.83, 0, -56.83], max: [-9.17, 4.18, -43.17], hemi: .25, env: .22,
     luz: { p: [-15.5, 4.1, -50], obj: [-15.5, 0, -50], c: 0xffe8c0, i: 40, d: 13, ang: 1.25 } }
 ];
 
@@ -60,19 +60,30 @@ if (!OFF) {
   // los plafones alumbran hacia abajo: lo que mira al suelo dentro de una sala (techos) solo recibe rebote
   if (salaDentro(vSalaW)) { float abajo = smoothstep(.4, .9, -inverseTransformDirection(normal, viewMatrix).y);
     reflectedLight.directDiffuse *= 1.0 - .8 * abajo; reflectedLight.directSpecular *= 1.0 - .8 * abajo; }
+#if defined(SALA_HORNO) && defined(USE_LIGHTMAP)
+  // receptor horneado (mundo/horneado.js): R = visibilidad de las lámparas, G = oclusión ambiental real
+  vec2 hv = texture2D(lightMap, vLightMapUv).rg; float ka = hv.g * mix(1.0, sk, .4), kd = mix(1.0, hv.r, .75) * mix(1.0, sk, .3);
+  reflectedLight.indirectDiffuse *= ka; reflectedLight.indirectSpecular *= mix(1.0, ka, .75);
+  reflectedLight.directDiffuse *= kd; reflectedLight.directSpecular *= kd; }
+#else
   reflectedLight.indirectDiffuse *= sk; reflectedLight.indirectSpecular *= mix(1.0, sk, .75);
-  reflectedLight.directDiffuse *= mix(1.0, sk, .6); reflectedLight.directSpecular *= mix(1.0, sk, .45); }`;
+  reflectedLight.directDiffuse *= mix(1.0, sk, .6); reflectedLight.directSpecular *= mix(1.0, sk, .45); }
+#endif`;
 }
 
 // ---------- 2) Luz principal con sombra (una, se muda de sala) ----------
 const foco = new THREE.SpotLight(0xffffff, 0, 12, 1.2, 1, 2);
-foco.castShadow = !OFF; foco.shadow.mapSize.set(1024, 1024); foco.shadow.bias = -.0006; foco.shadow.normalBias = .025;
+foco.castShadow = !OFF; foco.shadow.mapSize.set(512, 512); // 512: memoria de texturas (la penumbra y el horneado disimulan la resolución) foco.shadow.bias = -.0006; foco.shadow.normalBias = .025;
 foco.shadow.camera.near = .2; foco.shadow.autoUpdate = false; foco.position.set(0, -90, 0);
 scene.add(foco, foco.target);
 
 // ---------- 3) Sondas de reflejo ----------
 const pmrem = new THREE.PMREMGenerator(renderer);
-const rtCubo = new THREE.WebGLCubeRenderTarget(128, { type: THREE.HalfFloatType });
+// Ojo: renderizar la escena a una textura normal compila OTRA variante de cada shader (salida lineal, sin tonemapping):
+// la primera foto costaba ~4,5 s de tirón al entrar. Marcado como destino «XR», three usa la misma variante que la
+// pantalla (sRGB + ACES) → cero programas nuevos. La textura es sRGB de 8 bits: al muestrear se decodifica a lineal.
+const rtCubo = new THREE.WebGLCubeRenderTarget(128, { type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace });
+rtCubo.isXRRenderTarget = true;
 const camCubo = new THREE.CubeCamera(.05, 40, rtCubo);
 function fotografiar(S) {
   const c = new V3().fromArray(S.min).add(new V3().fromArray(S.max)).multiplyScalar(.5); c.y = Math.min(1.6, S.max[1] - .3);

@@ -420,7 +420,7 @@ export function hornear() {
   for (const cap in capas) {
     const root = capas[cap], groups = new Map(), list = [];
     for (const ch of root.children) ch.traverse(o => { if (o.isMesh && o.userData.static && o.userData.cap === cap) list.push(o); });
-    for (const m of list) { const k = m.material.uuid + '|' + (m.castShadow ? 1 : 0) + '|' + (m.userData.shoot ? 1 : 0) + '|' + (m.userData.zona || ''); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); }
+    for (const m of list) { const k = m.material.uuid + '|' + (m.castShadow ? 1 : 0) + '|' + (m.userData.shoot ? 1 : 0) + '|' + (m.userData.zona || '') + '|' + (m.userData.lm || '') /* lm: receptor de luz horneada (mundo/horneado.js) */; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); }
     const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
     for (const arr of groups.values()) {
       const zn = arr[0].userData.zona, Z = zn && zonas.get(zn);
@@ -429,7 +429,7 @@ export function hornear() {
       const geos = arr.map(m => { let g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); for (const a of Object.keys(g.attributes)) if (!keep.includes(a)) g.deleteAttribute(a); const n = g.attributes.position.count; if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2)); if (vc && !g.attributes.color) g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(1), 3)); g.morphAttributes = {}; return g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld)); });
       const merged = BGU.mergeGeometries(geos, false); geos.forEach(g => g.dispose());
       if (!merged) { for (const m of arr) if (m.userData.shoot) envPor[cap].push(m); continue; }
-      const mm = new THREE.Mesh(merged, arr[0].material); mm.castShadow = arr[0].castShadow; mm.receiveShadow = true; mm.userData.cap = cap; mm.userData.zona = zn; root.add(mm); if (Z) Z.mallas.push(mm);
+      const mm = new THREE.Mesh(merged, arr[0].material); mm.castShadow = arr[0].castShadow; mm.receiveShadow = true; mm.userData.cap = cap; mm.userData.zona = zn; mm.userData.lm = arr[0].userData.lm; root.add(mm); if (Z) Z.mallas.push(mm);
       if (arr[0].userData.shoot) envPor[cap].push(mm);
       for (const m of arr) m.removeFromParent();
     }

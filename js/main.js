@@ -3,6 +3,7 @@ import { conectarPerf } from './perf.js'; // primero: con ?stats engancha WebGL 
 import { THREE, V3, G, $, renderer, scene, capas, camera, dolly, head, vm, sky, sun, sunDir, aplicarHora, hornear, actualizarLuces, labels, rnd, lejania } from './nucleo.js';
 import { actualizarFx, audio, dust, ambiente } from './fx.js';
 import './mundo/iluminacion.js'; // salas: oclusión de esquinas, luz con sombra y reflejos propios (antes de compilar materiales)
+import { marcarReceptores, hornearSalas } from './mundo/horneado.js';
 import { modelo } from './cuerpos.js';
 import { construirTierra } from './mundo/tierra.js';
 import { construirEspacio, actualizarEspacio } from './mundo/espacio.js';
@@ -25,8 +26,10 @@ await construirTierra();
 await construirInteraccion(); // objetos, muebles, cristales, pickup por dentro (antes de hornear: lo fijo se fusiona)
 construirJuego(); // ecos, cámaras, linterna, actividades, guía, música (js/juego)
 construirEspacio();
+marcarReceptores(); // suelos/paredes/techos de las salas: se fusionan aparte para hornear su luz
 hornear();
 aplicarHora('atardecer');
+try { await hornearSalas(note); } catch (e) { console.warn('[horno] sin horneado:', e); } // sombras suaves y oclusión de las salas, horneadas en la GPU (~1-3 s)
 director.registrar(ACTO1);
 
 // ---------- Menú ----------
